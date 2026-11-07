@@ -84,6 +84,13 @@ window.__ModuleLoader__.load({
       moveUp: 'Выше',
       moveDown: 'Ниже',
       removeRow: 'Убрать из очереди',      back: 'Назад',
+      addToQueue: 'В очередь',
+      playNext: 'Играть следом',
+      addedToQueue: 'Добавлено в очередь',
+      addAllToQueue: 'Всё в очередь',
+      addedAll: 'Вся выдача в очереди',
+      jumpToCurrent: 'К текущему треку',
+      scrollTop: 'Наверх',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -153,6 +160,13 @@ window.__ModuleLoader__.load({
       moveUp: 'Move up',
       moveDown: 'Move down',
       removeRow: 'Remove from queue',      back: 'Back',
+      addToQueue: 'Add to queue',
+      playNext: 'Play next',
+      addedToQueue: 'Added to the queue',
+      addAllToQueue: 'Add all',
+      addedAll: 'Every result is queued',
+      jumpToCurrent: 'Jump to the current track',
+      scrollTop: 'Back to top',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -217,7 +231,7 @@ window.__ModuleLoader__.load({
 .ym-card-pane{flex:1;min-height:0;overflow-y:auto;padding:0 12px 8px}
 .ym-card-player{flex:none;padding:8px 12px 11px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
 .ym-head-actions{display:flex;align-items:center;gap:2px;flex:none}
-.ym-account{position:absolute;top:46px;right:10px;z-index:5;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.ym-account{position:absolute;top:46px;right:10px;z-index:20;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
 .ym-account-name{font-size:12px;line-height:1.45;margin:0 0 9px;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 .ym-card-close{border:0;background:transparent;color:inherit;cursor:pointer;padding:2px 6px;border-radius:6px;font-size:16px;line-height:1}
 .ym-card-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
@@ -239,7 +253,7 @@ window.__ModuleLoader__.load({
 .ym-add-title{font-size:12px;font-weight:600}
 .ym-add-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px}
 .ym-add-create{display:flex;gap:6px;align-items:center}
-.ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;margin-bottom:2px}
+.ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px;padding:5px 12px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-queue-row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:8px;border:1px dashed transparent}
 .ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-queue-row[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
@@ -247,7 +261,7 @@ window.__ModuleLoader__.load({
 .ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
-.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;margin-bottom:8px}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px 2px;padding:3px 12px 6px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
 .ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
@@ -263,6 +277,11 @@ window.__ModuleLoader__.load({
 .ym-result-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-result-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-size:11px}
 .ym-result-time{margin-left:auto;flex:none;color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums}
+.ym-result-actions{display:flex;align-items:center;gap:1px;flex:none;opacity:.55;transition:opacity .12s}
+.ym-result-actions .ym-mini-button{width:22px;height:22px}
+.ym-result:hover .ym-result-actions,.ym-result[data-active="true"] .ym-result-actions{opacity:1}
+.ym-results-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:4px 0 -2px}
+.ym-sticky-bar{position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px;padding:5px 12px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -956,11 +975,29 @@ window.__ModuleLoader__.load({
 
     /** Insert right after the playing track — the «play next» action. */
     function playNextInQueue(track) {
+      if (player.index < 0 && player.current === null && !player.playing) {
+        addToQueue(track);
+        return;
+      }
       const at = player.index < 0 ? player.queue.length : player.index + 1;
       const queue = player.queue.slice();
       queue.splice(at, 0, track);
       player.queue = queue;
       emit();
+    }
+
+    /**
+     * Append to the end of the queue. A silent player starts on the first added
+     * track instead of quietly filling up, which is what a search click implies.
+     */
+    function addToQueue(tracks) {
+      const list = Array.isArray(tracks) ? tracks.slice() : [tracks];
+      if (list.length === 0) return;
+      const silent = player.index < 0 && player.current === null && !player.playing;
+      const start = player.queue.length;
+      player.queue = player.queue.concat(list);
+      emit();
+      if (silent) void playAt(start);
     }
 
     /** Shuffle only what is still ahead, so the current track keeps playing. */
@@ -1091,7 +1128,7 @@ window.__ModuleLoader__.load({
         h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs))));
 
         return h('div', { className: 'ym-form' },
-          h('div', { className: 'ym-row' },
+          h('div', { className: 'ym-row ym-sticky-bar' },
             h('button', {
               type: 'button',
               className: 'ym-icon-button',
@@ -1099,7 +1136,15 @@ window.__ModuleLoader__.load({
               title: t('back'),
               onClick: () => setState((previous) => ({ ...previous, view: 'list', error: '' })),
             }, '\u2190'),
-            h('span', { className: 'ym-playlist-title' }, state.title)),
+            h('span', { className: 'ym-playlist-title' }, state.title),
+            h('button', {
+              type: 'button',
+              className: 'ym-icon-button',
+              'aria-label': t('addAllToQueue'),
+              title: t('addAllToQueue'),
+              disabled: state.tracks.length === 0,
+              onClick: () => addToQueue(state.tracks),
+            }, '+')),
           state.tracksLoading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
           state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
           h('div', { className: 'ym-results' }, rows));
@@ -1156,6 +1201,26 @@ window.__ModuleLoader__.load({
       const state = usePlayer();
       const [dragFrom, setDragFrom] = React.useState(-1);
       const [dragOver, setDragOver] = React.useState(-1);
+      const listRef = React.useRef(null);
+
+      /** Scroll the popover itself; the sticky toolbar keeps its own position. */
+      const scrollPane = (node, top, smooth) => {
+        const pane = node === null ? null : node.closest('.ym-card-pane');
+        if (pane === null) return;
+        pane.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+      };
+
+      const jumpToCurrent = () => {
+        const list = listRef.current;
+        const row = list === null ? null : list.querySelector('[data-active="true"]');
+        if (row === null) return;
+        const pane = row.closest('.ym-card-pane');
+        if (pane === null) return;
+        const paneRect = pane.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        const delta = rowRect.top - paneRect.top - paneRect.height / 2 + rowRect.height / 2;
+        pane.scrollTo({ top: Math.max(0, pane.scrollTop + delta), behavior: 'smooth' });
+      };
 
       const repeatLabel = state.repeat === 'one'
         ? t('repeatOne')
@@ -1179,6 +1244,21 @@ window.__ModuleLoader__.load({
           title: repeatLabel,
           onClick: cycleRepeat,
         }, state.repeat === 'one' ? '\u21b9' : '\u21bb'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('jumpToCurrent'),
+          title: t('jumpToCurrent'),
+          disabled: state.index < 0,
+          onClick: jumpToCurrent,
+        }, '\u25ce'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('scrollTop'),
+          title: t('scrollTop'),
+          onClick: () => scrollPane(listRef.current, 0, true),
+        }, '\u2191'),
         h('button', {
           className: 'ym-mini-button',
           type: 'button',
@@ -1254,7 +1334,7 @@ window.__ModuleLoader__.load({
           onClick: () => removeFromQueue(index),
         }, '\u00d7'))));
 
-      return h('div', { className: 'ym-form' }, header, h('div', { className: 'ym-results' }, rows));
+      return h('div', { className: 'ym-form' }, header, h('div', { className: 'ym-results', ref: listRef }, rows));
     }
 
     /** Add the current track to a Yandex playlist, or create one on the spot. */
@@ -1454,6 +1534,30 @@ window.__ModuleLoader__.load({
       const [tab, setTab] = React.useState('search');
       const [wave, setWave] = React.useState({ busy: false, error: '' });
       const state = usePlayer();
+      const tabsRef = React.useRef(null);
+      const flashTimer = React.useRef(0);
+      const [flash, setFlash] = React.useState('');
+      const [tabsHeight, setTabsHeight] = React.useState(35);
+
+      /** The pinned queue toolbar has to start right below the pinned tab bar. */
+      React.useLayoutEffect(() => {
+        const node = tabsRef.current;
+        if (node === null) return undefined;
+        const measure = () => setTabsHeight(Math.round(node.getBoundingClientRect().height));
+        measure();
+        if (typeof ResizeObserver === 'undefined') return undefined;
+        const observer = new ResizeObserver(measure);
+        observer.observe(node);
+        return () => observer.disconnect();
+      }, []);
+
+      React.useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+
+      const notify = (message) => {
+        setFlash(message);
+        window.clearTimeout(flashTimer.current);
+        flashTimer.current = window.setTimeout(() => setFlash(''), 2000);
+      };
 
       const startWaveClick = async () => {
         setWave({ busy: true, error: '' });
@@ -1495,12 +1599,19 @@ window.__ModuleLoader__.load({
         };
       }, [query]);
 
-      const rows = tracks.map((track, index) => h('button', {
+      const rows = tracks.map((track, index) => h('div', {
         key: `${track.id}-${index}`,
-        type: 'button',
         className: 'ym-result',
+        role: 'button',
+        tabIndex: 0,
         'data-active': state.current !== null && state.current.id === track.id ? 'true' : 'false',
         onClick: () => playQueue(tracks, index),
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            playQueue(tracks, index);
+          }
+        },
       },
       track.cover !== null
         ? h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' })
@@ -1508,7 +1619,30 @@ window.__ModuleLoader__.load({
       h('span', { className: 'ym-result-text' },
         h('span', { className: 'ym-result-title' }, track.title),
         h('span', { className: 'ym-result-sub' }, track.artists)),
-      h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs))));
+      h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs)),
+      h('span', { className: 'ym-result-actions' },
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          title: t('addToQueue'),
+          'aria-label': t('addToQueue'),
+          onClick: (event) => {
+            event.stopPropagation();
+            addToQueue(track);
+            notify(t('addedToQueue'));
+          },
+        }, '+'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          title: t('playNext'),
+          'aria-label': t('playNext'),
+          onClick: (event) => {
+            event.stopPropagation();
+            playNextInQueue(track);
+            notify(t('playNext'));
+          },
+        }, '\u21b3'))));
 
       const searchPane = h('div', { className: 'ym-form' },
         h('input', {
@@ -1524,6 +1658,21 @@ window.__ModuleLoader__.load({
         !busy && error === '' && query.trim() !== '' && tracks.length === 0
           ? h('p', { className: 'ym-hint' }, t('nothingFound'))
           : null,
+        flash !== '' ? h('p', { className: 'ym-hint' }, flash) : null,
+        tracks.length > 0
+          ? h('div', { className: 'ym-results-head' },
+            h('span', { className: 'ym-hint' }, `${t('tabSearch')} \u00b7 ${tracks.length}`),
+            h('button', {
+              className: 'ym-tab',
+              type: 'button',
+              style: { flex: 'none', padding: '2px 8px' },
+              title: t('addAllToQueue'),
+              onClick: () => {
+                addToQueue(tracks);
+                notify(t('addedAll'));
+              },
+            }, t('addAllToQueue')))
+          : null,
         tracks.length > 0 ? h('div', { className: 'ym-results' }, rows) : null);
 
       const wavePane = h('div', { className: 'ym-form' },
@@ -1537,8 +1686,8 @@ window.__ModuleLoader__.load({
         }, wave.busy ? t('waveLoading') : t('waveStart')),
         wave.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, wave.error) : null);
 
-      return h('div', { className: 'ym-form' },
-        h('div', { className: 'ym-tabs' },
+      return h('div', { className: 'ym-form', style: { '--ym-tabs-h': `${tabsHeight}px` } },
+        h('div', { className: 'ym-tabs', ref: tabsRef },
           h('button', {
             className: 'ym-tab',
             type: 'button',
@@ -1562,7 +1711,7 @@ window.__ModuleLoader__.load({
             type: 'button',
             'data-active': tab === 'queue' ? 'true' : 'false',
             onClick: () => setTab('queue'),
-          }, t('tabQueue'))),
+          }, state.queue.length > 0 ? `${t('tabQueue')} \u00b7 ${state.queue.length}` : t('tabQueue'))),
         tab === 'wave'
           ? wavePane
           : tab === 'playlists'
