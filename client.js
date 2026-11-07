@@ -34,7 +34,7 @@ window.__ModuleLoader__.load({
 
     const ru = {
       entry: 'Яндекс Музыка',
-      title: 'Яндекс Музыка',
+      title: 'Яндекс.Музыка',
       close: 'Закрыть',
       loading: 'Проверяем вход…',
       setupTitle: 'Подключение приложения',
@@ -154,7 +154,7 @@ window.__ModuleLoader__.load({
 
     const en = {
       entry: 'Yandex Music',
-      title: 'Yandex Music',
+      title: 'Yandex.Music',
       close: 'Close',
       loading: 'Checking sign-in…',
       setupTitle: 'Connect the application',
@@ -2209,7 +2209,7 @@ window.__ModuleLoader__.load({
 
       return h('div', { className: 'ym-player' },
         h('div', { className: 'ym-player-head' },
-          h(Marquee, { text: `${current.title} \u2014 ${current.artists}`, className: 'ym-player-title' }),
+          h(Marquee, { text: `${current.artists} \u2014 ${current.title}`, className: 'ym-player-title' }),
           state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null),
         h('div', { className: 'ym-seek-row' },
           h('input', {
@@ -3097,7 +3097,7 @@ window.__ModuleLoader__.load({
             type: 'button',
             className: 'ym-entry',
             'data-rail': 'true',
-            title: current !== null ? `${current.title} — ${current.artists}` : t('entry'),
+            title: current !== null ? `${current.artists} \u2014 ${current.title}` : t('entry'),
             'aria-label': t('entry'),
             'aria-haspopup': 'dialog',
             'aria-expanded': open ? 'true' : 'false',
