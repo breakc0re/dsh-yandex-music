@@ -125,6 +125,15 @@ window.__ModuleLoader__.load({
       makePrivate: 'Сделать приватным',
       deletePlaylist: 'Удалить плейлист',
       deleteConfirm: 'Точно удалить?',
+      waveMood: 'По настроению',
+      waveActivity: 'По занятию',
+      waveEpoch: 'По эпохе',
+      waveGenre: 'Жанры',
+      wavePersonal: 'Личное',
+      waveLanguage: 'По языку',
+      waveByArtist: 'Волна по исполнителю',
+      waveArtistPlaceholder: 'Имя исполнителя',
+      waveFailed: 'Волна не запустилась',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -235,6 +244,15 @@ window.__ModuleLoader__.load({
       makePrivate: 'Make private',
       deletePlaylist: 'Delete playlist',
       deleteConfirm: 'Delete for sure?',
+      waveMood: 'By mood',
+      waveActivity: 'By activity',
+      waveEpoch: 'By era',
+      waveGenre: 'Genres',
+      wavePersonal: 'Personal',
+      waveLanguage: 'By language',
+      waveByArtist: 'Wave by artist',
+      waveArtistPlaceholder: 'Artist name',
+      waveFailed: 'The wave did not start',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -363,6 +381,12 @@ window.__ModuleLoader__.load({
 .ym-link-button:hover{color:var(--dsw-alias-label-accent,#7aa7ff);text-decoration:underline}
 .ym-result-sub.ym-link-button{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
 .ym-index{flex:none;width:16px;text-align:right;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.ym-station{flex:none;width:70px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:center}
+.ym-station:disabled{opacity:.5;cursor:default}
+.ym-station-icon{width:52px;height:52px;border-radius:14px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.08))}
+.ym-station:hover .ym-station-icon{filter:brightness(1.12)}
+.ym-station[data-on="true"] .ym-station-icon{outline:2px solid var(--dsw-alias-border-accent,#4c8dff);outline-offset:1px}
+.ym-station .ym-chip-title{font-size:10.5px;line-height:1.25;max-height:2.5em;overflow:hidden}
 .ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1055,12 +1079,13 @@ window.__ModuleLoader__.load({
       }
     }
 
-    async function startWave() {
-      const value = await call('music/wave');
+    async function startWave(station) {
+      const target = typeof station === 'string' && station !== '' ? station : 'user:onyourwave';
+      const value = await call(`music/wave?station=${encodeURIComponent(target)}`);
       const tracks = Array.isArray(value.tracks) ? value.tracks : [];
       if (tracks.length === 0) throw new Error('wave is empty');
       waveSession.active = true;
-      waveSession.station = typeof value.station === 'string' && value.station !== '' ? value.station : 'user:onyourwave';
+      waveSession.station = typeof value.station === 'string' && value.station !== '' ? value.station : target;
       waveSession.batchId = typeof value.batchId === 'string' ? value.batchId : '';
       player.queue = tracks.slice();
       player.index = -1;
@@ -1069,7 +1094,7 @@ window.__ModuleLoader__.load({
 
     /** Append the next batch and report the index of its first track, or null. */
     async function extendWave() {
-      const value = await call('music/wave');
+      const value = await call(`music/wave?station=${encodeURIComponent(waveSession.station)}`);
       const tracks = Array.isArray(value.tracks) ? value.tracks : [];
       if (tracks.length === 0) return null;
       waveSession.batchId = typeof value.batchId === 'string' ? value.batchId : '';
@@ -1594,6 +1619,150 @@ window.__ModuleLoader__.load({
     function fmtTime(ms) {
       const total = Math.max(0, Math.round(ms / 1000));
       return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    /**
+     * «Моя волна» plus the whole station catalogue: mood, activity, epoch,
+     * genres and a wave started from any artist.
+     */
+    function WavePane({ t }) {
+      const [catalog, setCatalog] = React.useState({ loading: true, error: '', stations: [] });
+      const [busy, setBusy] = React.useState('');
+      const [error, setError] = React.useState('');
+      const [query, setQuery] = React.useState('');
+      const [artists, setArtists] = React.useState([]);
+      const [searching, setSearching] = React.useState(false);
+
+      React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const value = await call('music/wave/stations');
+            if (cancelled) return;
+            setCatalog({ loading: false, error: '', stations: Array.isArray(value.stations) ? value.stations : [] });
+          } catch (failure) {
+            if (!cancelled) setCatalog({ loading: false, error: failure.message || 'stations failed', stations: [] });
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }, []);
+
+      React.useEffect(() => {
+        const trimmed = query.trim();
+        if (trimmed === '') {
+          setArtists([]);
+          setSearching(false);
+          return undefined;
+        }
+        let cancelled = false;
+        setSearching(true);
+        const timer = window.setTimeout(async () => {
+          try {
+            const value = await call(`music/search?q=${encodeURIComponent(trimmed)}`);
+            if (cancelled) return;
+            setArtists(Array.isArray(value.artists) ? value.artists : []);
+          } catch {
+            if (!cancelled) setArtists([]);
+          } finally {
+            if (!cancelled) setSearching(false);
+          }
+        }, 350);
+        return () => {
+          cancelled = true;
+          window.clearTimeout(timer);
+        };
+      }, [query]);
+
+      const start = async (station) => {
+        if (busy !== '') return;
+        setBusy(station);
+        setError('');
+        try {
+          await startWave(station);
+          setBusy('');
+        } catch (failure) {
+          setBusy('');
+          setError(failure.message || t('waveFailed'));
+        }
+      };
+
+      const groups = [
+        { kind: 'mood', title: t('waveMood') },
+        { kind: 'activity', title: t('waveActivity') },
+        { kind: 'epoch', title: t('waveEpoch') },
+        { kind: 'genre', title: t('waveGenre'), limit: 40 },
+        { kind: 'personal', title: t('wavePersonal') },
+        { kind: 'local-language', title: t('waveLanguage') },
+      ]
+        .map((group) => ({
+          ...group,
+          stations: catalog.stations.filter((station) => station.kind === group.kind).slice(0, group.limit ?? 40),
+        }))
+        .filter((group) => group.stations.length > 0);
+
+      const chips = (stations) => stations.map((station) => h('button', {
+        key: station.id,
+        className: 'ym-station',
+        type: 'button',
+        title: station.name,
+        disabled: busy !== '',
+        'data-on': busy === station.id ? 'true' : 'false',
+        onClick: () => void start(station.id),
+      },
+      station.icon !== null
+        ? h('img', {
+          className: 'ym-station-icon',
+          src: station.icon,
+          alt: '',
+          loading: 'lazy',
+          style: station.color === '' ? {} : { background: station.color },
+        })
+        : h('span', {
+          className: 'ym-station-icon',
+          'aria-hidden': 'true',
+          style: station.color === '' ? {} : { background: station.color },
+        }),
+      h('span', { className: 'ym-chip-title' }, station.name)));
+
+      return h('div', { className: 'ym-form' },
+        h('button', {
+          className: 'ym-button',
+          type: 'button',
+          disabled: busy !== '',
+          onClick: () => void start('user:onyourwave'),
+        }, busy === 'user:onyourwave' ? t('waveLoading') : t('waveStart')),
+        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
+        catalog.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        catalog.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, catalog.error) : null,
+        groups.map((group) => h('div', { key: group.kind },
+          h('p', { className: 'ym-section' }, group.title),
+          h('div', { className: 'ym-strip' }, chips(group.stations)))),
+        h('p', { className: 'ym-section' }, t('waveByArtist')),
+        h('input', {
+          className: 'ym-input ym-search',
+          value: query,
+          placeholder: t('waveArtistPlaceholder'),
+          autoComplete: 'off',
+          onChange: (event) => setQuery(event.target.value),
+        }),
+        searching ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        artists.length > 0
+          ? h('div', { className: 'ym-results' }, artists.map((artist) => h('button', {
+            key: `a${artist.id}`,
+            type: 'button',
+            className: 'ym-result',
+            disabled: busy !== '',
+            onClick: () => void start(`artist:${artist.id}`),
+          },
+          artist.cover !== null
+            ? h('img', { className: 'ym-result-cover', src: artist.cover, alt: '', loading: 'lazy' })
+            : h('span', { className: 'ym-result-cover' }),
+          h('span', { className: 'ym-result-text' },
+            h('span', { className: 'ym-result-title' }, artist.name),
+            h('span', { className: 'ym-result-sub' }, `${artist.trackCount}`)))))
+          : null);
     }
 
     /** Queue editor: reorder by drag or arrows, remove, and jump to a track. */
@@ -2335,7 +2504,6 @@ window.__ModuleLoader__.load({
       const [tab, setTab] = React.useState('search');
       const [path, setPath] = React.useState([]);
       const [groups, setGroups] = React.useState({ artists: [], albums: [] });
-      const [wave, setWave] = React.useState({ busy: false, error: '' });
       const state = usePlayer();
       const tabsRef = React.useRef(null);
       const rootRef = React.useRef(null);
@@ -2384,16 +2552,6 @@ window.__ModuleLoader__.load({
       };
 
       const goBack = () => setPath((previous) => previous.slice(0, -1));
-
-      const startWaveClick = async () => {
-        setWave({ busy: true, error: '' });
-        try {
-          await startWave();
-          setWave({ busy: false, error: '' });
-        } catch (failure) {
-          setWave({ busy: false, error: failure.message || 'wave failed' });
-        }
-      };
 
       React.useEffect(() => {
         const trimmed = query.trim();
@@ -2533,17 +2691,6 @@ window.__ModuleLoader__.load({
           : null,
         tracks.length > 0 ? h('div', { className: 'ym-results' }, rows) : null);
 
-      const wavePane = h('div', { className: 'ym-form' },
-        h('button', {
-          className: 'ym-button',
-          type: 'button',
-          disabled: wave.busy,
-          onClick: () => {
-            void startWaveClick();
-          },
-        }, wave.busy ? t('waveLoading') : t('waveStart')),
-        wave.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, wave.error) : null);
-
       return h('div', { className: 'ym-form', ref: rootRef, style: { '--ym-tabs-h': `${tabsHeight}px` } },
         h('div', { className: 'ym-tabs', ref: tabsRef },
           h('button', {
@@ -2571,7 +2718,7 @@ window.__ModuleLoader__.load({
             onClick: () => setTab('queue'),
           }, state.queue.length > 0 ? `${t('tabQueue')} \u00b7 ${state.queue.length}` : t('tabQueue'))),
         tab === 'wave'
-          ? wavePane
+          ? h(WavePane, { t })
           : tab === 'playlists'
             ? h(PlaylistsPane, { t })
             : tab === 'queue'

@@ -27,7 +27,7 @@ import {
   setPlaylistVisibility,
   setTrackLike,
 } from './lib/playlists.js';
-import { waveFeedback, waveTracks } from './lib/rotor.js';
+import { stationCatalog, waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readAlbum, readArtist, readIdentity, readLyrics, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 import { readLyricsExternal } from './lib/lyrics.js';
@@ -500,11 +500,25 @@ export function apply(ctx) {
 
     'music/wave': async (request, response) => {
       if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const station = text(new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('station') ?? '', 80);
       const auth = await freshAuth();
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
-      const result = await waveTracks(auth.accessToken, typeof auth.uid === 'number' ? auth.uid : 0);
+      const result = await waveTracks(
+        auth.accessToken,
+        typeof auth.uid === 'number' ? auth.uid : 0,
+        station === '' ? {} : { station },
+      );
       if (result === null) return fail(response, 502, 'upstream', 'wave is unavailable');
       return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/wave/stations': async (request, response) => {
+      if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await stationCatalog(auth.accessToken);
+      if (result === null) return fail(response, 502, 'upstream', 'stations are unavailable');
+      return sendJson(response, 200, { ok: true, value: { stations: result } });
     },
 
     'music/wave/feedback': async (request, response) => {
