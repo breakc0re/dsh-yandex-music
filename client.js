@@ -38,6 +38,7 @@ window.__ModuleLoader__.load({
       submit: 'Подтвердить',
       submitting: 'Проверяем код…',
       signedIn: 'Вы вошли как',
+      noPlus: 'Без Яндекс Плюса доступны только 30-секундные превью.',
       logout: 'Выйти',
       retry: 'Повторить',
       errorGeneric: 'Не удалось выполнить запрос',
@@ -63,6 +64,7 @@ window.__ModuleLoader__.load({
       submit: 'Confirm',
       submitting: 'Checking the code…',
       signedIn: 'Signed in as',
+      noPlus: 'Without Yandex Plus only 30-second previews are available.',
       logout: 'Sign out',
       retry: 'Retry',
       errorGeneric: 'The request failed',
@@ -309,6 +311,7 @@ window.__ModuleLoader__.load({
 
       return h('div', { className: 'ym-form' },
         h('p', { className: 'ym-hint' }, `${t('signedIn')} ${status.login !== '' ? status.login : status.uid ?? '—'}`),
+        status.plus === false ? h('p', { className: 'ym-hint' }, t('noPlus')) : null,
         error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
         h('button', {
           className: 'ym-button',

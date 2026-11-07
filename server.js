@@ -18,7 +18,7 @@ import {
   refreshAccessToken,
 } from './lib/oauth.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
-import { readAccount } from './lib/yandex.js';
+import { readAccount, readIdentity } from './lib/yandex.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
@@ -82,21 +82,30 @@ export function apply(ctx) {
     }
   };
 
-  /** Renew the access token when it is about to expire. */
+  /** Renew the access token when it is about to expire, and backfill identity. */
   async function freshAuth() {
-    const auth = await readAuth(dir);
-    if (!needsRefresh(auth)) return auth;
-    try {
-      const response = await refreshAccessToken({
-        clientId: auth.clientId,
-        clientSecret: auth.clientSecret,
-        refreshToken: auth.refreshToken,
-      });
-      return await writeAuth(dir, applyTokenResponse(auth, response));
-    } catch {
-      // A dead refresh token means the user has to sign in again.
-      return auth;
+    let auth = await readAuth(dir);
+    if (needsRefresh(auth)) {
+      try {
+        const response = await refreshAccessToken({
+          clientId: auth.clientId,
+          clientSecret: auth.clientSecret,
+          refreshToken: auth.refreshToken,
+        });
+        auth = await writeAuth(dir, applyTokenResponse(auth, response));
+      } catch {
+        // A dead refresh token means the user has to sign in again.
+      }
     }
+    // Tokens issued before the identity fix, and any account whose Music
+    // response carried no uid, are repaired here instead of forcing a re-login.
+    if (typeof auth.accessToken === 'string' && auth.accessToken !== '' && auth.login === '') {
+      const identity = await readIdentity(auth.accessToken);
+      if (identity !== null) {
+        auth = await writeAuth(dir, { ...auth, uid: identity.uid, login: identity.login });
+      }
+    }
+    return auth;
   }
 
   const handlers = {
@@ -170,10 +179,12 @@ export function apply(ctx) {
         return fail(response, 400, code2, error instanceof Error ? error.message : 'token exchange failed');
       }
       let next = applyTokenResponse(auth, response2);
-      const account = await readAccount(next.accessToken);
-      if (account !== null) {
-        next = { ...next, uid: account.uid, login: account.login !== '' ? account.login : account.displayName };
-      }
+      const [identity, account] = await Promise.all([
+        readIdentity(next.accessToken),
+        readAccount(next.accessToken),
+      ]);
+      if (identity !== null) next = { ...next, uid: identity.uid, login: identity.login };
+      if (account !== null) next = { ...next, plus: account.hasPlus === true };
       next = await writeAuth(dir, next);
       return sendJson(response, 200, { ok: true, value: publicStatus(next) });
     },
