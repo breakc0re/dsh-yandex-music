@@ -103,7 +103,9 @@ window.__ModuleLoader__.load({
       unmute: 'Включить звук',
       lyrics: 'Текст песни',
       noLyrics: 'У этого трека нет текста',
-      lyricsEstimated: 'Текст без таймкодов — строки идут по длительности',
+      lyricsEstimated: 'без таймкодов',
+      lyricsSource: 'Источник',
+      lyricsSynced: 'синхронизировано',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -192,7 +194,9 @@ window.__ModuleLoader__.load({
       unmute: 'Unmute',
       lyrics: 'Lyrics',
       noLyrics: 'No lyrics for this track',
-      lyricsEstimated: 'No timecodes — lines follow the track length',
+      lyricsEstimated: 'no timecodes',
+      lyricsSource: 'Source',
+      lyricsSynced: 'synced',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -1697,17 +1701,30 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         let cancelled = false;
         if (currentId === '') {
-          setData({ loading: false, error: '', lines: [] });
+          setData({ loading: false, error: '', lines: [], timed: [], source: '' });
           return undefined;
         }
-        setData({ loading: true, error: '', lines: [] });
+        // The title is what lets the host look the text up outside Yandex.
+        const query = new URLSearchParams({
+          trackId: currentId,
+          title: current === null ? '' : current.title,
+          artist: current === null ? '' : current.artists,
+          duration: String(current === null ? 0 : current.durationMs),
+        });
+        setData({ loading: true, error: '', lines: [], timed: [], source: '' });
         (async () => {
           try {
-            const value = await call(`music/lyrics?trackId=${encodeURIComponent(currentId)}`);
+            const value = await call(`music/lyrics?${query}`);
             if (cancelled) return;
-            setData({ loading: false, error: '', lines: Array.isArray(value.lines) ? value.lines : [] });
+            setData({
+              loading: false,
+              error: '',
+              lines: Array.isArray(value.lines) ? value.lines : [],
+              timed: Array.isArray(value.timed) ? value.timed : [],
+              source: typeof value.source === 'string' ? value.source : '',
+            });
           } catch (failure) {
-            if (!cancelled) setData({ loading: false, error: failure.message || 'lyrics failed', lines: [] });
+            if (!cancelled) setData({ loading: false, error: failure.message || 'lyrics failed', lines: [], timed: [], source: '' });
           }
         })();
         return () => {
@@ -1716,21 +1733,32 @@ window.__ModuleLoader__.load({
       }, [currentId]);
 
       const lines = data.lines;
+      const timed = data.timed;
       const durationMs = state.duration > 0 ? state.duration * 1000 : (current === null ? 0 : current.durationMs);
       const positionMs = state.position * 1000;
 
-      const weights = lines.map((line) => (line.trim() === '' ? 0.55 : Math.max(1, line.trim().length)));
-      const totalWeight = weights.reduce((sum, value) => sum + value, 0);
       const starts = [];
       let active = -1;
-      let cursor = 0;
-      for (let i = 0; i < lines.length; i += 1) {
-        starts.push(totalWeight === 0 ? 0 : (cursor / totalWeight) * durationMs);
-        const end = totalWeight === 0 ? 0 : ((cursor + weights[i]) / totalWeight) * durationMs;
-        if (active < 0 && durationMs > 0 && positionMs < end) active = i;
-        cursor += weights[i];
+      if (timed.length > 0) {
+        // Real timecodes: the only honest karaoke.
+        for (let i = 0; i < timed.length; i += 1) {
+          starts.push(timed[i].timeMs);
+          if (timed[i].timeMs <= positionMs) active = i;
+        }
+        if (active < 0) active = 0;
+      } else {
+        // Plain text: spread the lines over the track by their own length.
+        const weights = lines.map((line) => (line.trim() === '' ? 0.55 : Math.max(1, line.trim().length)));
+        const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+        let cursor = 0;
+        for (let i = 0; i < lines.length; i += 1) {
+          starts.push(totalWeight === 0 ? 0 : (cursor / totalWeight) * durationMs);
+          const end = totalWeight === 0 ? 0 : ((cursor + weights[i]) / totalWeight) * durationMs;
+          if (active < 0 && durationMs > 0 && positionMs < end) active = i;
+          cursor += weights[i];
+        }
+        if (active < 0 && lines.length > 0) active = lines.length - 1;
       }
-      if (active < 0 && lines.length > 0) active = lines.length - 1;
 
       React.useEffect(() => {
         const body = bodyRef.current;
@@ -1771,7 +1799,11 @@ window.__ModuleLoader__.load({
                 if (durationMs > 0) seekTo(Math.max(0, starts[index] / 1000));
               },
             }, line)),
-          lines.length > 0 ? h('p', { className: 'ym-lyrics-note' }, t('lyricsEstimated')) : null));
+          lines.length > 0
+            ? h('p', { className: 'ym-lyrics-note' },
+              `${t('lyricsSource')}: ${data.source === 'yandex' ? 'Яндекс' : data.source === 'lrclib' ? 'lrclib' : '—'}`,
+              timed.length > 0 ? ` \u00b7 ${t('lyricsSynced')}` : ` \u00b7 ${t('lyricsEstimated')}`)
+            : null));
     }
 
     /** The «в очередь / следом» pair that every track list offers. */

@@ -19,6 +19,7 @@ import { addTrackToPlaylist, createPlaylist, listPlaylists, readPlaylist, setTra
 import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readAlbum, readArtist, readIdentity, readLyrics, resolveTrackUrl, searchTracks } from './lib/yandex.js';
+import { readLyricsExternal } from './lib/lyrics.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
@@ -242,13 +243,42 @@ export function apply(ctx) {
 
     'music/lyrics': async (request, response) => {
       if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
-      const trackId = text(new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('trackId') ?? '', 32);
+      const params = new URL(request.url ?? '/', 'http://127.0.0.1').searchParams;
+      const trackId = text(params.get('trackId') ?? '', 32);
       if (!/^\d+$/u.test(trackId)) return fail(response, 400, 'track', 'trackId is required');
+      const title = text(params.get('title') ?? '', 200);
+      const artist = text(params.get('artist') ?? '', 200);
+      const durationRaw = Number(params.get('duration') ?? '');
+      const durationMs = Number.isFinite(durationRaw) && durationRaw > 0 ? durationRaw : 0;
       const auth = await freshAuth();
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
-      const result = await readLyrics(auth.accessToken, trackId);
-      if (result === null) return fail(response, 502, 'upstream', 'lyrics are unavailable');
-      return sendJson(response, 200, { ok: true, value: result });
+
+      // Both sources at once: Yandex knows the catalogue, LRCLIB knows the timing.
+      const [inner, external] = await Promise.all([
+        readLyrics(auth.accessToken, trackId),
+        readLyricsExternal({ title, artist, durationMs }),
+      ]);
+
+      // A timed text is the only thing that can actually follow the song.
+      if (external !== null && external.timed.length > 0) {
+        return sendJson(response, 200, {
+          ok: true,
+          value: { available: true, source: 'lrclib', lines: external.lines, timed: external.timed },
+        });
+      }
+      if (inner !== null && inner.available) {
+        return sendJson(response, 200, {
+          ok: true,
+          value: { available: true, source: 'yandex', lines: inner.lines, timed: [] },
+        });
+      }
+      if (external !== null && external.lines.length > 0) {
+        return sendJson(response, 200, {
+          ok: true,
+          value: { available: true, source: 'lrclib', lines: external.lines, timed: [] },
+        });
+      }
+      return sendJson(response, 200, { ok: true, value: { available: false, source: 'none', lines: [], timed: [] } });
     },
 
     'music/playlist/create': async (request, response) => {
