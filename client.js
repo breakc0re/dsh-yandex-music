@@ -1616,6 +1616,17 @@ window.__ModuleLoader__.load({
       emitMenu();
     }
 
+    /** Drag near an edge scrolls the pane, so a long list can be reordered by hand. */
+    function autoScrollOnDrag(event) {
+      const node = event.currentTarget;
+      const pane = node instanceof Element ? node.closest('.ym-card-pane') : null;
+      if (pane === null) return;
+      const box = pane.getBoundingClientRect();
+      const edge = 52;
+      if (event.clientY < box.top + edge) pane.scrollTop -= 14;
+      else if (event.clientY > box.bottom - edge) pane.scrollTop += 14;
+    }
+
     function closeTrackMenu() {
       if (trackMenu.open !== true) return;
       trackMenu.open = false;
@@ -1789,27 +1800,51 @@ window.__ModuleLoader__.load({
       if (state.view === 'tracks') {
         const playing = playback.current === null ? '' : String(playback.current.id);
         const editable = state.kind >= 0 && state.kind !== 3;
+
+        /**
+         * A drop is resolved from the row under the pointer, not from the row
+         * that owns the handler: the sticky header and the gaps between rows
+         * sit on top of the list, so row-level `onDrop` misses the top of it.
+         */
+        const dropTo = (event, requested) => {
+          event.preventDefault();
+          const raw = Number(event.dataTransfer === null || event.dataTransfer === undefined
+            ? ''
+            : event.dataTransfer.getData('text/plain'));
+          const from = Number.isInteger(raw) && raw >= 0 ? raw : dragFrom;
+          setDragFrom(-1);
+          setDragOver(-1);
+          if (!editable || !Number.isInteger(requested)) return;
+          if (from < 0 || requested < 0 || from === requested) return;
+          if (requested >= state.tracks.length) return;
+          void mutate('music/playlist/move', { kind: state.kind, from, to: requested });
+        };
+
         const rows = state.tracks.map((track, index) => h('div', {
           key: `${track.id}-${index}`,
           className: 'ym-result',
           'data-active': playing !== '' && playing === String(track.id) ? 'true' : 'false',
           'data-over': dragOver === index ? 'true' : 'false',
+          'data-index': index,
           draggable: editable,
-          onDragStart: () => setDragFrom(index),
+          onDragStart: (event) => {
+            setDragFrom(index);
+            if (event.dataTransfer !== null && event.dataTransfer !== undefined) {
+              event.dataTransfer.effectAllowed = 'move';
+              event.dataTransfer.setData('text/plain', String(index));
+            }
+          },
+          onDragEnter: (event) => {
+            if (!editable) return;
+            event.preventDefault();
+            setDragOver(index);
+          },
           onDragOver: (event) => {
             if (!editable) return;
             event.preventDefault();
             setDragOver(index);
           },
           onDragLeave: () => setDragOver(-1),
-          onDrop: (event) => {
-            event.preventDefault();
-            const from = dragFrom;
-            setDragFrom(-1);
-            setDragOver(-1);
-            if (!editable || from < 0 || from === index) return;
-            void mutate('music/playlist/move', { kind: state.kind, from, to: index });
-          },
           onDragEnd: () => {
             setDragFrom(-1);
             setDragOver(-1);
@@ -1922,7 +1957,14 @@ window.__ModuleLoader__.load({
           : null;
 
         return h('div', { className: 'ym-form' },
-          h('div', { className: 'ym-row ym-sticky-bar' },
+          h('div', {
+            className: 'ym-row ym-sticky-bar',
+            onDragOver: (event) => {
+              if (editable) event.preventDefault();
+            },
+            // Dropping on the header means «move to the top».
+            onDrop: (event) => dropTo(event, 0),
+          },
             h('button', {
               type: 'button',
               className: 'ym-icon-button',
@@ -1971,7 +2013,18 @@ window.__ModuleLoader__.load({
           rows.length > 0
             ? h('p', { className: 'ym-section' }, `${t('tracksSection')} \u00b7 ${state.tracks.length}`)
             : null,
-          h('div', { className: 'ym-results' }, rows));
+          h('div', {
+            className: 'ym-results',
+            onDragOver: (event) => {
+              if (editable) event.preventDefault();
+              if (editable) autoScrollOnDrag(event);
+            },
+            onDrop: (event) => {
+              const row = event.target instanceof Element ? event.target.closest('[data-index]') : null;
+              const requested = row === null ? 0 : Number(row.getAttribute('data-index'));
+              dropTo(event, requested);
+            },
+          }, rows));
       }
 
       const rows = [
@@ -2247,11 +2300,33 @@ window.__ModuleLoader__.load({
         pane.scrollTo({ top: Math.max(0, pane.scrollTop + delta), behavior: 'smooth' });
       };
 
+      /**
+       * The drop target is the row under the pointer, not the row that owns the
+       * handler: the sticky toolbar sits on top of the list, so a row-level
+       * `onDrop` misses the top of it and dragging upwards did nothing.
+       */
+      const dropTo = (event, requested) => {
+        event.preventDefault();
+        const raw = Number(event.dataTransfer === null || event.dataTransfer === undefined
+          ? ''
+          : event.dataTransfer.getData('text/plain'));
+        const from = Number.isInteger(raw) && raw >= 0 ? raw : dragFrom;
+        setDragFrom(-1);
+        setDragOver(-1);
+        if (from < 0 || !Number.isInteger(requested) || from === requested) return;
+        if (requested >= state.queue.length) return;
+        moveInQueue(from, requested);
+      };
+
       const repeatLabel = state.repeat === 'one'
         ? t('repeatOne')
         : state.repeat === 'all' ? t('repeatAll') : t('repeatOff');
 
-      const header = h('div', { className: 'ym-queue-head' },
+      const header = h('div', {
+        className: 'ym-queue-head',
+        onDragOver: (event) => event.preventDefault(),
+        onDrop: (event) => dropTo(event, 0),
+      },
         h('span', { className: 'ym-playlist-title' }, `${origin.kind === 'likes' ? t('likedPlaylist') : t('tabCurrent')} \u00b7 ${state.queue.length}`),
         h('button', {
           className: 'ym-mini-button',
@@ -2303,20 +2378,25 @@ window.__ModuleLoader__.load({
         className: 'ym-queue-row',
         'data-active': state.index === index ? 'true' : 'false',
         'data-over': dragOver === index ? 'true' : 'false',
+        'data-index': index,
         onContextMenu: (event) => openTrackMenu(event, track),
         draggable: true,
-        onDragStart: () => setDragFrom(index),
+        onDragStart: (event) => {
+          setDragFrom(index);
+          if (event.dataTransfer !== null && event.dataTransfer !== undefined) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', String(index));
+          }
+        },
+        onDragEnter: (event) => {
+          event.preventDefault();
+          setDragOver(index);
+        },
         onDragOver: (event) => {
           event.preventDefault();
           setDragOver(index);
         },
         onDragLeave: () => setDragOver(-1),
-        onDrop: (event) => {
-          event.preventDefault();
-          if (dragFrom >= 0) moveInQueue(dragFrom, index);
-          setDragFrom(-1);
-          setDragOver(-1);
-        },
         onDragEnd: () => {
           setDragFrom(-1);
           setDragOver(-1);
@@ -2361,7 +2441,18 @@ window.__ModuleLoader__.load({
           onClick: () => removeFromQueue(index),
         }, '\u00d7'))));
 
-      return h('div', { className: 'ym-form' }, header, h('div', { className: 'ym-results', ref: listRef }, rows));
+      return h('div', { className: 'ym-form' }, header, h('div', {
+        className: 'ym-results',
+        ref: listRef,
+        onDragOver: (event) => {
+          event.preventDefault();
+          autoScrollOnDrag(event);
+        },
+        onDrop: (event) => {
+          const row = event.target instanceof Element ? event.target.closest('[data-index]') : null;
+          dropTo(event, row === null ? 0 : Number(row.getAttribute('data-index')));
+        },
+      }, rows));
     }
 
     /** Add the current track to a Yandex playlist, or create one on the spot. */
