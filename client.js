@@ -330,7 +330,8 @@ window.__ModuleLoader__.load({
 .ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-seek{flex:1;min-width:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-time{flex:none;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.ym-seek-row{display:flex;align-items:center;margin:0 0 6px}
+.ym-time{flex:none;margin-left:auto;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
 .ym-volume-wrap{position:relative;display:inline-flex;flex:none}
 .ym-volume-pop{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:6px;padding:10px 8px 7px;border-radius:10px;background:rgba(16,16,20,.98);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 26px rgba(0,0,0,.5);z-index:12}
@@ -1583,31 +1584,45 @@ window.__ModuleLoader__.load({
 
       if (current === null) return null;
       const durationMs = state.duration > 0 ? state.duration * 1000 : current.durationMs;
+      const percent = Math.round((state.muted ? 0 : state.volume) * 100);
+
+      /** Mute on click, vertical slider on hover — one compact control. */
+      const volumeControl = h('span', { className: 'ym-volume-wrap' },
+        h('button', {
+          className: 'ym-icon-button',
+          type: 'button',
+          'aria-label': state.muted ? t('unmute') : t('mute'),
+          title: state.muted ? t('unmute') : t('mute'),
+          onClick: toggleMute,
+        }, h(VolumeIcon, { size: 15, muted: state.muted })),
+        h('div', { className: 'ym-volume-pop', role: 'group', 'aria-label': t('volume') },
+          h('div', { className: 'ym-volume-slot' },
+            h('input', {
+              className: 'ym-volume-vert',
+              type: 'range',
+              min: 0,
+              max: 100,
+              step: 1,
+              value: percent,
+              'aria-label': t('volume'),
+              onChange: (event) => setVolume(Number(event.target.value) / 100),
+            })),
+          h('span', { className: 'ym-volume-value' }, `${percent}%`)));
+
       return h('div', { className: 'ym-player' },
         h('div', { className: 'ym-player-head' },
           h('span', { className: 'ym-player-title' }, `${current.title} — ${current.artists}`),
-          state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null,
-          h('span', { className: 'ym-volume-wrap' },
-            h('button', {
-              className: 'ym-icon-button',
-              type: 'button',
-              'aria-label': state.muted ? t('unmute') : t('mute'),
-              title: state.muted ? t('unmute') : t('mute'),
-              onClick: toggleMute,
-            }, h(VolumeIcon, { size: 15, muted: state.muted })),
-            h('div', { className: 'ym-volume-pop', role: 'group', 'aria-label': t('volume') },
-              h('div', { className: 'ym-volume-slot' },
-                h('input', {
-                  className: 'ym-volume-vert',
-                  type: 'range',
-                  min: 0,
-                  max: 100,
-                  step: 1,
-                  value: Math.round((state.muted ? 0 : state.volume) * 100),
-                  'aria-label': t('volume'),
-                  onChange: (event) => setVolume(Number(event.target.value) / 100),
-                })),
-              h('span', { className: 'ym-volume-value' }, `${Math.round((state.muted ? 0 : state.volume) * 100)}%`)))),
+          state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null),
+        h('div', { className: 'ym-seek-row' },
+          h('input', {
+            className: 'ym-seek',
+            type: 'range',
+            min: 0,
+            max: Math.max(1, Math.round(durationMs / 1000)),
+            value: Math.round(state.position),
+            'aria-label': t('nowPlaying'),
+            onChange: (event) => seekTo(Number(event.target.value)),
+          })),
         h('div', { className: 'ym-controls' },
           h('button', {
             className: 'ym-icon-button',
@@ -1661,16 +1676,8 @@ window.__ModuleLoader__.load({
             'aria-pressed': state.lyricsOpen ? 'true' : 'false',
             onClick: toggleLyrics,
           }, 'Aa'),
-          h('input', {
-            className: 'ym-seek',
-            type: 'range',
-            min: 0,
-            max: Math.max(1, Math.round(durationMs / 1000)),
-            value: Math.round(state.position),
-            'aria-label': t('nowPlaying'),
-            onChange: (event) => seekTo(Number(event.target.value)),
-          }),
-          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
+          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`),
+          volumeControl),
         addOpen ? h(AddToPlaylist, { t, track: current, onClose: () => setAddOpen(false) }) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null);
     }
