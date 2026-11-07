@@ -316,7 +316,7 @@ window.__ModuleLoader__.load({
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 2px;flex:none}
 .ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card-pane{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:0 12px 8px}
-.ym-card-player{flex:none;padding:4px 8px 6px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
+.ym-card-player{flex:none;padding:4px 8px 4px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
 .ym-head-actions{display:flex;align-items:center;gap:2px;flex:none}
 .ym-account{position:absolute;top:38px;right:10px;z-index:20;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
 .ym-account-name{font-size:12px;line-height:1.45;margin:0 0 9px;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
@@ -395,14 +395,15 @@ window.__ModuleLoader__.load({
 .ym-station .ym-chip-title{font-size:10.5px;line-height:1.25;max-height:2.5em;overflow:hidden}
 .ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
-.ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-player-title{min-width:0;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
 .ym-controls{display:flex;align-items:center;gap:4px}
+.ym-controls .ym-icon-button{width:32px;height:32px}
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
 .ym-icon-button{transition:background .12s ease,color .12s ease,transform .1s ease}.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}.ym-icon-button:active{transform:scale(.94)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
-.ym-seek{flex:1 1 auto;min-width:0;max-width:190px;height:11px;margin:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 3px}
+.ym-seek{flex:1 1 auto;min-width:0;height:8px;margin:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
+.ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 2px}
 .ym-seek-row .ym-icon-button{width:20px;height:20px}
 .ym-time{flex:none;margin-left:0;font-size:10px;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
@@ -813,6 +814,7 @@ window.__ModuleLoader__.load({
       volume: 1,
       muted: false,
       lyricsOpen: false,
+      restoring: 0,
       listeners: new Set(),
     };
 
@@ -827,8 +829,7 @@ window.__ModuleLoader__.load({
       /* a blocked storage must never break the player */
     }
 
-    /** Push the volume onto whichever element is current and remember it. */
-    function applyVolume() {
+    /** Push the volume onto whichever element is current and remember it. */    function applyVolume() {
       const audio = player.audio;
       if (audio !== null) audio.volume = player.muted ? 0 : player.volume;
       try {
@@ -857,6 +858,67 @@ window.__ModuleLoader__.load({
     function toggleLyrics() {
       player.lyricsOpen = !player.lyricsOpen;
       emit();
+    }
+
+    /**
+     * The last playing track and where it stopped. DSH restarts lose the page,
+     * and the queue lives in memory only, so a small snapshot is written to
+     * local storage while playing and restored on the next boot.
+     */
+    const RESUME_KEY = 'dsh-yandex-music.resume';
+    const RESUME_QUEUE_LIMIT = 300;
+    let resumeSavedAt = 0;
+
+    function saveResume(force) {
+      const stamp = Date.now();
+      if (force !== true && stamp - resumeSavedAt < 5_000) return;
+      resumeSavedAt = stamp;
+      try {
+        if (typeof window === 'undefined' || window.localStorage === null) return;
+        if (player.current === null) {
+          window.localStorage.removeItem(RESUME_KEY);
+          return;
+        }
+        window.localStorage.setItem(RESUME_KEY, JSON.stringify({
+          index: player.index,
+          position: Math.round(player.position),
+          currentId: String(player.current.id),
+          queue: player.queue.slice(0, RESUME_QUEUE_LIMIT),
+        }));
+      } catch {
+        /* a full or blocked storage must never break playback */
+      }
+    }
+
+    function restoreResume() {
+      try {
+        if (typeof window === 'undefined' || window.localStorage === null) return;
+        const raw = window.localStorage.getItem(RESUME_KEY);
+        if (raw === null || raw === '') return;
+        const saved = JSON.parse(raw);
+        const queue = Array.isArray(saved?.queue)
+          ? saved.queue.filter((track) => track !== null && typeof track === 'object' && track.id !== undefined)
+          : [];
+        if (queue.length === 0) return;
+        const index = Number.isInteger(saved.index) && saved.index >= 0 && saved.index < queue.length
+          ? saved.index
+          : queue.findIndex((track) => String(track.id) === String(saved.currentId ?? ''));
+        player.queue = queue;
+        player.index = index;
+        player.current = index >= 0 ? queue[index] : null;
+        const position = typeof saved.position === 'number' && saved.position > 0 ? saved.position : 0;
+        player.position = position;
+        player.restoring = position;
+      } catch {
+        /* a broken snapshot is simply ignored */
+      }
+    }
+
+    restoreResume();
+
+    if (typeof window !== 'undefined' && window.__ymResumeWired !== true) {
+      window.__ymResumeWired = true;
+      window.addEventListener('pagehide', () => saveResume(true));
     }
 
     function emit() {
@@ -936,6 +998,7 @@ window.__ModuleLoader__.load({
       audio.__ym = {
         time: () => {
           player.position = audio.currentTime;
+          saveResume();
           emit();
         },
         duration: () => {
@@ -1004,13 +1067,14 @@ window.__ModuleLoader__.load({
       }
     }
 
-    async function playAt(index) {
+    async function playAt(index, startAt = 0) {
       if (index < 0 || index >= player.queue.length) return;
       const token = ++playToken;
       player.index = index;
       player.current = player.queue[index];
       player.error = '';
-      player.position = 0;
+      const seekTo = Number.isFinite(startAt) && startAt > 0 ? startAt : 0;
+      player.position = seekTo;
       player.duration = 0;
       emit();
       try {
@@ -1026,8 +1090,21 @@ window.__ModuleLoader__.load({
         // pause() here would reject the previous play() promise and surface a
         // bogus error in the UI.
         audio.src = value.url;
+        if (seekTo > 0) {
+          const jump = () => {
+            try {
+              audio.currentTime = seekTo;
+            } catch {
+              /* an unseekable element simply starts from the beginning */
+            }
+          };
+          if (audio.readyState >= 1) jump();
+          else audio.addEventListener('loadedmetadata', jump, { once: true });
+        }
         await audio.play();
         if (token !== playToken) return;
+        player.restoring = 0;
+        saveResume(true);
         void sendFeedback('trackStarted', player.current);
       } catch (failure) {
         if (token !== playToken) return;
@@ -1059,6 +1136,11 @@ window.__ModuleLoader__.load({
       const audio = ensureAudio();
       if (player.current === null) {
         if (player.queue.length > 0) void playAt(0);
+        return;
+      }
+      // A restored session has a current track but no media loaded yet.
+      if (audio.getAttribute('src') === null) {
+        void playAt(player.index < 0 ? 0 : player.index, player.restoring);
         return;
       }
       if (audio.paused) {
@@ -1232,6 +1314,7 @@ window.__ModuleLoader__.load({
           /* ignore */
         }
       }
+      saveResume(true);
       emit();
     }
 
