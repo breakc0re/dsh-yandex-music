@@ -11,9 +11,6 @@
 import { randomUUID } from 'node:crypto';
 import {
   applyTokenResponse,
-  buildAuthorizeUrl,
-  createPkce,
-  exchangeCode,
   needsRefresh,
   refreshAccessToken,
 } from './lib/oauth.js';
@@ -23,8 +20,6 @@ import { readAccount, readIdentity, resolveTrackUrl, searchTracks } from './lib/
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
-/** A confirmation code lives 10 minutes; drop pending PKCE state after that. */
-const PENDING_TTL_MS = 10 * 60_000;
 const MAX_BODY_BYTES = 8 * 1024;
 
 export const inject = ['webServer'];
@@ -73,17 +68,8 @@ function text(value, max) {
 
 export function apply(ctx) {
   const dir = resolveDataDir(ctx);
-  /** state → { verifier, at }; in-memory only, so a restart just asks again. */
-  const pending = new Map();
   /** flowId → { deviceCode, at, expiresIn } for the Device Flow. */
   const pendingFlows = new Map();
-
-  const prunePending = () => {
-    const now = Date.now();
-    for (const [key, value] of pending) {
-      if (now - value.at > PENDING_TTL_MS) pending.delete(key);
-    }
-  };
 
   /** Renew the access token when it is about to expire, and backfill identity. */
   async function freshAuth() {
@@ -145,66 +131,6 @@ export function apply(ctx) {
       return sendJson(response, 200, { ok: true, value: publicStatus(next) });
     },
 
-    'auth/start': async (request, response) => {
-      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
-      prunePending();
-      const auth = await readAuth(dir);
-      if (auth.clientId === '') return fail(response, 400, 'client-id', 'client_id is required');
-      const deviceId = auth.deviceId !== '' ? auth.deviceId : randomUUID();
-      if (deviceId !== auth.deviceId) await writeAuth(dir, { ...auth, deviceId });
-      const { verifier, challenge } = createPkce();
-      const state = randomUUID();
-      pending.set(state, { verifier, at: Date.now() });
-      const url = buildAuthorizeUrl({
-        clientId: auth.clientId,
-        state,
-        challenge,
-        deviceId,
-        deviceName: 'DSH NEXT',
-      });
-      return sendJson(response, 200, { ok: true, value: { url, state } });
-    },
-
-    'auth/complete': async (request, response) => {
-      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
-      const body = await readJsonBody(request);
-      // Two shapes are valid here: the 7-digit code Yandex shows on the
-      // verification_code page, and the longer alphanumeric `code` from a
-      // redirect URL when the application registered a real Redirect URI.
-      const code = text(body.code, 512).replace(/\s+/gu, '');
-      if (!/^[A-Za-z0-9._~-]{4,512}$/u.test(code)) {
-        return fail(response, 400, 'code', 'confirmation code is missing or malformed');
-      }
-      const state = text(body.state, 64);
-      const entry = pending.get(state);
-      if (entry === undefined) return fail(response, 400, 'state', 'authorization session expired, start again');
-      pending.delete(state);
-      const auth = await readAuth(dir);
-      let response2;
-      try {
-        response2 = await exchangeCode({
-          clientId: auth.clientId,
-          clientSecret: auth.clientSecret,
-          code,
-          verifier: entry.verifier,
-          deviceId: auth.deviceId,
-          deviceName: 'DSH NEXT',
-        });
-      } catch (error) {
-        const code2 = typeof error?.code === 'string' ? error.code : 'exchange';
-        return fail(response, 400, code2, error instanceof Error ? error.message : 'token exchange failed');
-      }
-      let next = applyTokenResponse(auth, response2);
-      const [identity, account] = await Promise.all([
-        readIdentity(next.accessToken),
-        readAccount(next.accessToken),
-      ]);
-      if (identity !== null) next = { ...next, uid: identity.uid, login: identity.login };
-      if (account !== null) next = { ...next, plus: account.hasPlus === true };
-      next = await writeAuth(dir, next);
-      return sendJson(response, 200, { ok: true, value: publicStatus(next) });
-    },
-
     'auth/logout': async (request, response) => {
       if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
       const auth = await readAuth(dir);
@@ -222,7 +148,6 @@ export function apply(ctx) {
 
     'auth/device/start': async (request, response) => {
       if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
-      prunePending();
       const auth = await readAuth(dir);
       if (auth.clientId === '') return fail(response, 400, 'client-id', 'client_id is required');
       const deviceId = auth.deviceId !== '' ? auth.deviceId : randomUUID();

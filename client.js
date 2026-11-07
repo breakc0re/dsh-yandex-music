@@ -127,6 +127,10 @@ window.__ModuleLoader__.load({
 .ym-entry{display:flex;align-items:center;gap:8px;width:100%;padding:6px 12px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:13px;text-align:left;cursor:pointer}
 .ym-entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .ym-entry[data-rail="true"]{justify-content:center;padding:6px 0}
+.ym-entry[data-playing="true"]{padding-right:34px}
+.ym-entry-wrap{position:relative;display:flex;width:100%}
+.ym-entry-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:11px;cursor:pointer}
+.ym-entry-toggle:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card{position:fixed;z-index:60;box-sizing:border-box;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-base,#1b1b1b);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--dsw-alias-label-primary);font-size:13px}
@@ -744,6 +748,8 @@ window.__ModuleLoader__.load({
       const [open, setOpen] = React.useState(false);
       const [anchor, setAnchor] = React.useState(null);
       const buttonRef = React.useRef(null);
+      const playback = usePlayer();
+      const current = playback.current;
 
       const place = React.useCallback(() => {
         const node = buttonRef.current;
@@ -811,19 +817,35 @@ window.__ModuleLoader__.load({
         : null;
 
       return h(React.Fragment, null,
-        h('button', {
-          ref: buttonRef,
-          type: 'button',
-          className: 'ym-entry',
-          'data-rail': wide ? 'false' : 'true',
-          title: wide ? undefined : t('entry'),
-          'aria-label': t('entry'),
-          'aria-haspopup': 'dialog',
-          'aria-expanded': open ? 'true' : 'false',
-          onClick: toggle,
-        },
-        h('span', { className: 'ym-entry-icon', 'aria-hidden': 'true' }, h(NoteIcon, { size: 16 })),
-        wide ? h('span', { className: 'ym-entry-label' }, t('entry')) : null),
+        h('div', { className: 'ym-entry-wrap' },
+          h('button', {
+            ref: buttonRef,
+            type: 'button',
+            className: 'ym-entry',
+            'data-rail': wide ? 'false' : 'true',
+            'data-playing': current !== null ? 'true' : 'false',
+            title: wide ? undefined : (current !== null ? current.title : t('entry')),
+            'aria-label': t('entry'),
+            'aria-haspopup': 'dialog',
+            'aria-expanded': open ? 'true' : 'false',
+            onClick: toggle,
+          },
+          h('span', { className: 'ym-entry-icon', 'aria-hidden': 'true' }, h(NoteIcon, { size: 16 })),
+          wide
+            ? h('span', { className: 'ym-entry-label' }, current !== null ? current.title : t('entry'))
+            : null),
+          wide && current !== null
+            ? h('button', {
+              type: 'button',
+              className: 'ym-entry-toggle',
+              'aria-label': playback.playing ? t('pause') : t('play'),
+              title: playback.playing ? t('pause') : t('play'),
+              onClick: (event) => {
+                event.stopPropagation();
+                togglePlay();
+              },
+            }, playback.playing ? '\u23f8' : '\u25b6')
+            : null),
         card);
     }
 
