@@ -271,7 +271,7 @@ window.__ModuleLoader__.load({
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 2px;flex:none}
 .ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ym-card-pane{flex:1;min-height:0;overflow-y:auto;padding:0 12px 8px}
+.ym-card-pane{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:0 12px 8px}
 .ym-card-player{flex:none;padding:6px 12px 8px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
 .ym-head-actions{display:flex;align-items:center;gap:2px;flex:none}
 .ym-account{position:absolute;top:38px;right:10px;z-index:20;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
@@ -305,7 +305,7 @@ window.__ModuleLoader__.load({
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
 .ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
-.ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
+.ym-tab{flex:1;min-width:0;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
 .ym-device-code{font-size:20px;letter-spacing:.22em;font-weight:600;text-align:center;padding:10px;border-radius:8px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-variant-numeric:tabular-nums}
@@ -346,9 +346,10 @@ window.__ModuleLoader__.load({
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
 .ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
-.ym-seek{flex:1;min-width:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-seek-row{display:flex;align-items:center;margin:0 0 4px}
-.ym-time{flex:none;margin-left:auto;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.ym-seek{flex:1 1 auto;min-width:0;max-width:170px;height:11px;margin:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
+.ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 5px}
+.ym-seek-row .ym-icon-button{width:22px;height:22px}
+.ym-time{flex:none;margin-left:0;font-size:10px;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
 .ym-volume-wrap{position:relative;display:inline-flex;flex:none}
 .ym-volume-pop{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:6px;padding:10px 8px 7px;border-radius:10px;background:rgba(16,16,20,.98);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 26px rgba(0,0,0,.5);z-index:12}
@@ -1673,7 +1674,9 @@ window.__ModuleLoader__.load({
             value: Math.round(state.position),
             'aria-label': t('nowPlaying'),
             onChange: (event) => seekTo(Number(event.target.value)),
-          })),
+          }),
+          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`),
+          volumeControl),
         h('div', { className: 'ym-controls' },
           h('button', {
             className: 'ym-icon-button',
@@ -1726,9 +1729,7 @@ window.__ModuleLoader__.load({
             title: t('lyrics'),
             'aria-pressed': state.lyricsOpen ? 'true' : 'false',
             onClick: toggleLyrics,
-          }, 'Aa'),
-          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`),
-          volumeControl),
+          }, 'Aa')),
         addOpen ? h(AddToPlaylist, { t, track: current, onClose: () => setAddOpen(false) }) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null);
     }
@@ -2114,6 +2115,7 @@ window.__ModuleLoader__.load({
       const [wave, setWave] = React.useState({ busy: false, error: '' });
       const state = usePlayer();
       const tabsRef = React.useRef(null);
+      const rootRef = React.useRef(null);
       const flashTimer = React.useRef(0);
       const [flash, setFlash] = React.useState('');
       const [tabsHeight, setTabsHeight] = React.useState(35);
@@ -2131,6 +2133,15 @@ window.__ModuleLoader__.load({
       }, []);
 
       React.useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+
+      /**
+       * A new tab must not inherit the previous tab's scroll offset: the pane
+       * would stay scrolled into a shorter list and the content would jump.
+       */
+      React.useEffect(() => {
+        const pane = rootRef.current === null ? null : rootRef.current.closest('.ym-card-pane');
+        if (pane !== null) pane.scrollTop = 0;
+      }, [tab, path]);
 
       const notify = (message) => {
         setFlash(message);
@@ -2310,7 +2321,7 @@ window.__ModuleLoader__.load({
         }, wave.busy ? t('waveLoading') : t('waveStart')),
         wave.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, wave.error) : null);
 
-      return h('div', { className: 'ym-form', style: { '--ym-tabs-h': `${tabsHeight}px` } },
+      return h('div', { className: 'ym-form', ref: rootRef, style: { '--ym-tabs-h': `${tabsHeight}px` } },
         h('div', { className: 'ym-tabs', ref: tabsRef },
           h('button', {
             className: 'ym-tab',
