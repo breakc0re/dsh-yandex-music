@@ -11,6 +11,8 @@ window.__ModuleLoader__.load({
     const STYLE_ID = 'yandex-music';
     /** Popover width in pixels; the card is clamped to the viewport. */
     const CARD_WIDTH = 340;
+    /** Host routes owned by this plugin. */
+    const API = '/api/plugins/yandex-music';
 
     /* ------------------------------------------------------------------ */
     /* copy                                                                */
@@ -19,15 +21,51 @@ window.__ModuleLoader__.load({
     const ru = {
       entry: 'Яндекс Музыка',
       title: 'Яндекс Музыка',
-      placeholder: 'Плеер появится здесь: поиск, очередь и «Моя волна».',
       close: 'Закрыть',
+      loading: 'Проверяем вход…',
+      setupTitle: 'Подключение приложения',
+      setupHint: 'Создайте приложение на oauth.yandex.ru с Redirect URI https://oauth.yandex.ru/verification_code и вставьте его client_id. Секрет не нужен: вход идёт через PKCE.',
+      setupLink: 'Открыть oauth.yandex.ru',
+      clientId: 'client_id',
+      clientSecret: 'client_secret (необязательно)',
+      save: 'Сохранить',
+      saving: 'Сохраняем…',
+      loginTitle: 'Вход в Яндекс',
+      loginHint: 'Откройте страницу, разрешите доступ и введите 7-значный код, который покажет Яндекс.',
+      login: 'Войти в Яндекс',
+      openPage: 'Открыть страницу входа',
+      code: 'Код подтверждения',
+      submit: 'Подтвердить',
+      submitting: 'Проверяем код…',
+      signedIn: 'Вы вошли как',
+      logout: 'Выйти',
+      retry: 'Повторить',
+      errorGeneric: 'Не удалось выполнить запрос',
     };
 
     const en = {
       entry: 'Yandex Music',
       title: 'Yandex Music',
-      placeholder: 'The player will appear here: search, queue and My Wave.',
       close: 'Close',
+      loading: 'Checking sign-in…',
+      setupTitle: 'Connect the application',
+      setupHint: 'Create an application at oauth.yandex.ru with Redirect URI https://oauth.yandex.ru/verification_code and paste its client_id. No secret is needed: sign-in uses PKCE.',
+      setupLink: 'Open oauth.yandex.ru',
+      clientId: 'client_id',
+      clientSecret: 'client_secret (optional)',
+      save: 'Save',
+      saving: 'Saving…',
+      loginTitle: 'Sign in to Yandex',
+      loginHint: 'Open the page, allow access, then enter the 7-digit code Yandex shows you.',
+      login: 'Sign in to Yandex',
+      openPage: 'Open the sign-in page',
+      code: 'Confirmation code',
+      submit: 'Confirm',
+      submitting: 'Checking the code…',
+      signedIn: 'Signed in as',
+      logout: 'Sign out',
+      retry: 'Retry',
+      errorGeneric: 'The request failed',
     };
 
     /* ------------------------------------------------------------------ */
@@ -41,11 +79,23 @@ window.__ModuleLoader__.load({
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card{position:fixed;z-index:60;box-sizing:border-box;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-base,#1b1b1b);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--dsw-alias-label-primary);font-size:13px}
-.ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .ym-card-title{font-weight:600}
 .ym-card-close{border:0;background:transparent;color:inherit;cursor:pointer;padding:2px 6px;border-radius:6px;font-size:16px;line-height:1}
 .ym-card-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.ym-card-body{color:var(--dsw-alias-label-secondary);line-height:1.5}
+.ym-form{display:flex;flex-direction:column;gap:8px}
+.ym-field{display:flex;flex-direction:column;gap:4px}
+.ym-label{font-size:12px;color:var(--dsw-alias-label-secondary)}
+.ym-input{box-sizing:border-box;width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));background:var(--dsw-alias-bg-l1,transparent);color:inherit;font:inherit;font-size:13px}
+.ym-input:focus{outline:2px solid var(--dsw-alias-border-accent,#4c8dff);outline-offset:1px}
+.ym-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid transparent;background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff;font:inherit;font-size:13px;cursor:pointer}
+.ym-button:disabled{opacity:.55;cursor:default}
+.ym-button[data-variant="ghost"]{background:transparent;border-color:var(--dsw-alias-border-l1,rgba(255,255,255,.14));color:inherit}
+.ym-hint{font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.45;margin:0}
+.ym-error{font-size:12px;color:var(--dsw-alias-label-danger,#ff6b6b);margin:0}
+.ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
+.ym-row{display:flex;align-items:center;gap:8px}
+.ym-code{letter-spacing:.18em;font-variant-numeric:tabular-nums}
 `;
 
     /** Inject the plugin stylesheet once; the disposer removes it on teardown. */
@@ -59,6 +109,34 @@ window.__ModuleLoader__.load({
       return () => {
         tag.remove();
       };
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* transport                                                           */
+    /* ------------------------------------------------------------------ */
+
+    /** Call one Host route and unwrap the `{ ok, value }` envelope. */
+    async function call(path, body) {
+      const response = await window.fetch(`${API}/${path}`, {
+        method: body === undefined ? 'GET' : 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: body === undefined ? {} : { 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const envelope = await response.json().catch(() => null);
+      if (envelope === null || typeof envelope !== 'object') {
+        const error = new Error('bad response');
+        error.code = 'response';
+        throw error;
+      }
+      if (envelope.ok !== true) {
+        const failure = envelope.error !== null && typeof envelope.error === 'object' ? envelope.error : {};
+        const error = new Error(typeof failure.message === 'string' ? failure.message : 'request failed');
+        error.code = typeof failure.code === 'string' ? failure.code : 'unknown';
+        throw error;
+      }
+      return envelope.value;
     }
 
     /* ------------------------------------------------------------------ */
@@ -81,6 +159,192 @@ window.__ModuleLoader__.load({
       h('path', { d: 'M9 18V5l12-2v13' }),
       h('circle', { cx: 6, cy: 18, r: 3 }),
       h('circle', { cx: 18, cy: 16, r: 3 }));
+    }
+
+    /** One-time application setup: the OAuth client id, not a user token. */
+    function SetupScreen({ t, onSaved }) {
+      const [clientId, setClientId] = React.useState('');
+      const [clientSecret, setClientSecret] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+
+      const submit = async (event) => {
+        event.preventDefault();
+        if (clientId.trim() === '' || busy) return;
+        setBusy(true);
+        setError('');
+        try {
+          await call('auth/config', { clientId: clientId.trim(), clientSecret: clientSecret.trim() });
+          await onSaved();
+        } catch (failure) {
+          setError(failure.message || t('errorGeneric'));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      return h('form', { className: 'ym-form', onSubmit: submit },
+        h('p', { className: 'ym-hint' }, t('setupHint')),
+        h('a', {
+          className: 'ym-link',
+          href: 'https://oauth.yandex.ru/client/new',
+          target: '_blank',
+          rel: 'noreferrer',
+        }, t('setupLink')),
+        h('label', { className: 'ym-field' },
+          h('span', { className: 'ym-label' }, t('clientId')),
+          h('input', {
+            className: 'ym-input',
+            value: clientId,
+            autoComplete: 'off',
+            spellCheck: false,
+            onChange: (event) => setClientId(event.target.value),
+          })),
+        h('label', { className: 'ym-field' },
+          h('span', { className: 'ym-label' }, t('clientSecret')),
+          h('input', {
+            className: 'ym-input',
+            type: 'password',
+            value: clientSecret,
+            autoComplete: 'off',
+            onChange: (event) => setClientSecret(event.target.value),
+          })),
+        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
+        h('button', { className: 'ym-button', type: 'submit', disabled: busy || clientId.trim() === '' },
+          busy ? t('saving') : t('save')));
+    }
+
+    /** Confirmation-code sign-in: open the page, then type the 7 digits. */
+    function LoginScreen({ t, onSignedIn }) {
+      const [session, setSession] = React.useState(null);
+      const [code, setCode] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+
+      const start = async () => {
+        if (busy) return;
+        setBusy(true);
+        setError('');
+        try {
+          const value = await call('auth/start', {});
+          setSession(value);
+          try {
+            window.open(value.url, '_blank', 'noopener');
+          } catch {
+            /* the link below is the fallback */
+          }
+        } catch (failure) {
+          setError(failure.message || t('errorGeneric'));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const submit = async (event) => {
+        event.preventDefault();
+        if (session === null || busy) return;
+        setBusy(true);
+        setError('');
+        try {
+          await call('auth/complete', { code: code.trim(), state: session.state });
+          await onSignedIn();
+        } catch (failure) {
+          setError(failure.message || t('errorGeneric'));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      return h('form', { className: 'ym-form', onSubmit: submit },
+        h('p', { className: 'ym-hint' }, t('loginHint')),
+        h('button', {
+          className: 'ym-button',
+          type: 'button',
+          disabled: busy,
+          onClick: start,
+        }, session === null ? t('login') : t('openPage')),
+        session !== null ? h('a', {
+          className: 'ym-link',
+          href: session.url,
+          target: '_blank',
+          rel: 'noreferrer',
+        }, session.url) : null,
+        h('label', { className: 'ym-field' },
+          h('span', { className: 'ym-label' }, t('code')),
+          h('input', {
+            className: 'ym-input ym-code',
+            value: code,
+            inputMode: 'numeric',
+            autoComplete: 'one-time-code',
+            maxLength: 12,
+            disabled: session === null,
+            onChange: (event) => setCode(event.target.value.replace(/[^\d]/gu, '')),
+          })),
+        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
+        h('button', {
+          className: 'ym-button',
+          type: 'submit',
+          disabled: busy || session === null || code.trim() === '',
+        }, busy ? t('submitting') : t('submit')));
+    }
+
+    /** Signed-in summary with a way out. */
+    function AccountScreen({ t, status, onSignedOut }) {
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+
+      const logout = async () => {
+        if (busy) return;
+        setBusy(true);
+        setError('');
+        try {
+          await call('auth/logout', {});
+          await onSignedOut();
+        } catch (failure) {
+          setError(failure.message || t('errorGeneric'));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      return h('div', { className: 'ym-form' },
+        h('p', { className: 'ym-hint' }, `${t('signedIn')} ${status.login !== '' ? status.login : status.uid ?? '—'}`),
+        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
+        h('button', {
+          className: 'ym-button',
+          'data-variant': 'ghost',
+          type: 'button',
+          disabled: busy,
+          onClick: logout,
+        }, t('logout')));
+    }
+
+    /** Auth state machine for the popover body. */
+    function AuthBody({ t }) {
+      const [state, setState] = React.useState({ loading: true, status: null, error: '' });
+
+      const reload = React.useCallback(async () => {
+        try {
+          const status = await call('auth/status');
+          setState({ loading: false, status, error: '' });
+        } catch (failure) {
+          setState({ loading: false, status: null, error: failure.message || t('errorGeneric') });
+        }
+      }, [t]);
+
+      React.useEffect(() => {
+        reload();
+      }, [reload]);
+
+      if (state.loading) return h('p', { className: 'ym-hint' }, t('loading'));
+      if (state.status === null) {
+        return h('div', { className: 'ym-form' },
+          h('p', { className: 'ym-error', role: 'alert' }, state.error),
+          h('button', { className: 'ym-button', type: 'button', onClick: reload }, t('retry')));
+      }
+      if (!state.status.configured) return h(SetupScreen, { t, onSaved: reload });
+      if (!state.status.authorized) return h(LoginScreen, { t, onSignedIn: reload });
+      return h(AccountScreen, { t, status: state.status, onSignedOut: reload });
     }
 
     /**
@@ -153,7 +417,7 @@ window.__ModuleLoader__.load({
               'aria-label': t('close'),
               onClick: () => setOpen(false),
             }, '\u00d7')),
-          h('div', { className: 'ym-card-body' }, t('placeholder'))),
+          h(AuthBody, { t })),
           document.body,
         )
         : null;
