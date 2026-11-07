@@ -15,6 +15,7 @@ import {
   refreshAccessToken,
 } from './lib/oauth.js';
 import { MUSIC_CLIENT_ID, MUSIC_CLIENT_SECRET, pollDeviceToken, requestDeviceCode } from './lib/device.js';
+import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 
@@ -214,6 +215,30 @@ export function apply(ctx) {
       const result = await searchTracks(auth.accessToken, query);
       if (result === null) return fail(response, 502, 'upstream', 'music search failed');
       return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/wave': async (request, response) => {
+      if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await waveTracks(auth.accessToken, typeof auth.uid === 'number' ? auth.uid : 0);
+      if (result === null) return fail(response, 502, 'upstream', 'wave is unavailable');
+      return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/wave/feedback': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await waveFeedback(auth.accessToken, text(String(body.station ?? 'user:onyourwave'), 64), {
+        type: text(String(body.type ?? ''), 32),
+        trackId: text(String(body.trackId ?? ''), 64),
+        ...text(String(body.batchId ?? ''), 128) === '' ? {} : { batchId: text(String(body.batchId ?? ''), 128) },
+        ...typeof body.totalPlayedSeconds === 'number' ? { totalPlayedSeconds: body.totalPlayedSeconds } : {},
+      });
+      if (result.ok !== true) return fail(response, 502, 'feedback', 'feedback rejected');
+      return sendJson(response, 200, { ok: true, value: { ok: true } });
     },
 
     'music/track-url': async (request, response) => {

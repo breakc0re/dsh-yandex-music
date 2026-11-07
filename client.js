@@ -66,6 +66,10 @@ window.__ModuleLoader__.load({
       previewBadge: 'превью 30 с',
       queueEmpty: 'Очередь пуста',
       nowPlaying: 'Сейчас играет',
+      tabSearch: 'Поиск',
+      tabWave: 'Волна',
+      waveStart: 'Включить «Мою волну»',
+      waveLoading: 'Загружаем волну…',
       remoteControl: 'Remote Control',
       deviceHint: 'Откройте ya.ru/device и введите код:',
       deviceWaiting: 'Ждём подтверждения на странице Яндекса…',
@@ -110,6 +114,10 @@ window.__ModuleLoader__.load({
       previewBadge: '30 s preview',
       queueEmpty: 'The queue is empty',
       nowPlaying: 'Now playing',
+      tabSearch: 'Search',
+      tabWave: 'My Wave',
+      waveStart: 'Start My Wave',
+      waveLoading: 'Loading the wave…',
       remoteControl: 'Remote Control',
       deviceHint: 'Open ya.ru/device and enter the code:',
       deviceWaiting: 'Waiting for confirmation on the Yandex page…',
@@ -151,6 +159,10 @@ window.__ModuleLoader__.load({
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
 .ym-code{font-variant-numeric:tabular-nums}
+.ym-tabs{display:flex;gap:4px;margin-bottom:8px}
+.ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
+.ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
 .ym-device-code{font-size:20px;letter-spacing:.22em;font-weight:600;text-align:center;padding:10px;border-radius:8px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-variant-numeric:tabular-nums}
 .ym-search{width:100%}
 .ym-results{display:flex;flex-direction:column;gap:1px;max-height:230px;overflow-y:auto;margin:8px -4px 0;padding:0 4px}
@@ -514,7 +526,10 @@ window.__ModuleLoader__.load({
         emit();
       });
       audio.addEventListener('ended', () => {
-        void step(1);
+        const finished = player.current;
+        const played = Number.isFinite(audio.duration) ? audio.duration : player.position;
+        if (finished !== null) void sendFeedback('trackFinished', finished, played);
+        void advance();
       });
       audio.addEventListener('error', () => {
         player.error = 'playback';
@@ -542,6 +557,7 @@ window.__ModuleLoader__.load({
         player.preview = value.preview === true;
         audio.src = value.url;
         await audio.play();
+        void sendFeedback('trackStarted', player.current);
       } catch (failure) {
         player.error = failure.message || 'playback';
         player.playing = false;
@@ -573,8 +589,74 @@ window.__ModuleLoader__.load({
     }
 
     function playQueue(tracks, index) {
+      waveSession.active = false;
       player.queue = tracks.slice();
       void playAt(index);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* wave                                                                */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * The rotor returns five tracks per batch and a fresh `batchId` each time,
+     * so an endless stream means asking for the next batch when the queue ends.
+     */
+    const waveSession = { active: false, station: 'user:onyourwave', batchId: '' };
+
+    /** Feedback is best-effort: a rejected report must never stop the music. */
+    async function sendFeedback(type, track, playedSeconds) {
+      if (!waveSession.active || track === null) return;
+      try {
+        await call('music/wave/feedback', {
+          station: waveSession.station,
+          type,
+          trackId: String(track.id),
+          ...waveSession.batchId === '' ? {} : { batchId: waveSession.batchId },
+          ...playedSeconds === undefined ? {} : { totalPlayedSeconds: Math.round(playedSeconds) },
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
+    async function startWave() {
+      const value = await call('music/wave');
+      const tracks = Array.isArray(value.tracks) ? value.tracks : [];
+      if (tracks.length === 0) throw new Error('wave is empty');
+      waveSession.active = true;
+      waveSession.station = typeof value.station === 'string' && value.station !== '' ? value.station : 'user:onyourwave';
+      waveSession.batchId = typeof value.batchId === 'string' ? value.batchId : '';
+      player.queue = tracks.slice();
+      player.index = -1;
+      await playAt(0);
+    }
+
+    /** Append the next batch and report the index of its first track, or null. */
+    async function extendWave() {
+      const value = await call('music/wave');
+      const tracks = Array.isArray(value.tracks) ? value.tracks : [];
+      if (tracks.length === 0) return null;
+      waveSession.batchId = typeof value.batchId === 'string' ? value.batchId : '';
+      const start = player.queue.length;
+      player.queue = player.queue.concat(tracks);
+      return start;
+    }
+
+    /** Next track, growing the wave queue first when the current batch is spent. */
+    async function advance() {
+      if (waveSession.active && player.index >= player.queue.length - 1) {
+        try {
+          const next = await extendWave();
+          if (next !== null) {
+            await playAt(next);
+            return;
+          }
+        } catch {
+          /* fall through to the ordinary path */
+        }
+      }
+      await step(1);
     }
 
     function seekTo(seconds) {
@@ -643,7 +725,19 @@ window.__ModuleLoader__.load({
       const [tracks, setTracks] = React.useState([]);
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
+      const [tab, setTab] = React.useState('search');
+      const [wave, setWave] = React.useState({ busy: false, error: '' });
       const state = usePlayer();
+
+      const startWaveClick = async () => {
+        setWave({ busy: true, error: '' });
+        try {
+          await startWave();
+          setWave({ busy: false, error: '' });
+        } catch (failure) {
+          setWave({ busy: false, error: failure.message || 'wave failed' });
+        }
+      };
 
       React.useEffect(() => {
         const trimmed = query.trim();
@@ -690,7 +784,7 @@ window.__ModuleLoader__.load({
         h('span', { className: 'ym-result-sub' }, track.artists)),
       h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs))));
 
-      return h('div', { className: 'ym-form' },
+      const searchPane = h('div', { className: 'ym-form' },
         h('input', {
           className: 'ym-input ym-search',
           value: query,
@@ -704,7 +798,34 @@ window.__ModuleLoader__.load({
         !busy && error === '' && query.trim() !== '' && tracks.length === 0
           ? h('p', { className: 'ym-hint' }, t('nothingFound'))
           : null,
-        tracks.length > 0 ? h('div', { className: 'ym-results' }, rows) : null,
+        tracks.length > 0 ? h('div', { className: 'ym-results' }, rows) : null);
+
+      const wavePane = h('div', { className: 'ym-form' },
+        h('button', {
+          className: 'ym-button',
+          type: 'button',
+          disabled: wave.busy,
+          onClick: () => {
+            void startWaveClick();
+          },
+        }, wave.busy ? t('waveLoading') : t('waveStart')),
+        wave.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, wave.error) : null);
+
+      return h('div', { className: 'ym-form' },
+        h('div', { className: 'ym-tabs' },
+          h('button', {
+            className: 'ym-tab',
+            type: 'button',
+            'data-active': tab === 'search' ? 'true' : 'false',
+            onClick: () => setTab('search'),
+          }, t('tabSearch')),
+          h('button', {
+            className: 'ym-tab',
+            type: 'button',
+            'data-active': tab === 'wave' ? 'true' : 'false',
+            onClick: () => setTab('wave'),
+          }, t('tabWave'))),
+        tab === 'wave' ? wavePane : searchPane,
         h(PlayerBar, { t }),
         h(AccountScreen, { t, status, onSignedOut }));
     }
