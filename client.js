@@ -40,6 +40,17 @@ window.__ModuleLoader__.load({
       signedIn: 'Вы вошли как',
       noPlus: 'Без Яндекс Плюса доступны только 30-секундные превью.',
       logout: 'Выйти',
+      searchPlaceholder: 'Найти трек или исполнителя',
+      searching: 'Ищем…',
+      nothingFound: 'Ничего не нашлось',
+      searchFailed: 'Поиск не удался',
+      play: 'Играть',
+      pause: 'Пауза',
+      next: 'Следующий',
+      prev: 'Предыдущий',
+      previewBadge: 'превью 30 с',
+      queueEmpty: 'Очередь пуста',
+      nowPlaying: 'Сейчас играет',
       retry: 'Повторить',
       errorGeneric: 'Не удалось выполнить запрос',
     };
@@ -66,6 +77,17 @@ window.__ModuleLoader__.load({
       signedIn: 'Signed in as',
       noPlus: 'Without Yandex Plus only 30-second previews are available.',
       logout: 'Sign out',
+      searchPlaceholder: 'Find a track or artist',
+      searching: 'Searching…',
+      nothingFound: 'Nothing found',
+      searchFailed: 'Search failed',
+      play: 'Play',
+      pause: 'Pause',
+      next: 'Next',
+      prev: 'Previous',
+      previewBadge: '30 s preview',
+      queueEmpty: 'The queue is empty',
+      nowPlaying: 'Now playing',
       retry: 'Retry',
       errorGeneric: 'The request failed',
     };
@@ -98,6 +120,26 @@ window.__ModuleLoader__.load({
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
 .ym-code{font-variant-numeric:tabular-nums}
+.ym-search{width:100%}
+.ym-results{display:flex;flex-direction:column;gap:1px;max-height:230px;overflow-y:auto;margin:8px -4px 0;padding:0 4px}
+.ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
+.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-result[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
+.ym-result-cover{flex:none;width:32px;height:32px;border-radius:6px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
+.ym-result-text{min-width:0;display:flex;flex-direction:column;gap:1px}
+.ym-result-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-result-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-size:11px}
+.ym-result-time{margin-left:auto;flex:none;color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums}
+.ym-player{margin-top:10px;padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1))}
+.ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
+.ym-controls{display:flex;align-items:center;gap:6px}
+.ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
+.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
+.ym-seek{flex:1;min-width:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
+.ym-time{flex:none;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 `;
 
     /** Inject the plugin stylesheet once; the disposer removes it on teardown. */
@@ -322,8 +364,256 @@ window.__ModuleLoader__.load({
         }, t('logout')));
     }
 
+    /* ------------------------------------------------------------------ */
+    /* player                                                              */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Playback state lives outside React on purpose: the popover unmounts when
+     * it closes, and an <audio> owned by the component tree would stop the music.
+     */
+    const player = {
+      audio: null,
+      queue: [],
+      index: -1,
+      current: null,
+      preview: false,
+      playing: false,
+      position: 0,
+      duration: 0,
+      error: '',
+      listeners: new Set(),
+    };
+
+    function emit() {
+      for (const listener of player.listeners) listener();
+    }
+
+    function subscribe(listener) {
+      player.listeners.add(listener);
+      return () => {
+        player.listeners.delete(listener);
+      };
+    }
+
+    function ensureAudio() {
+      if (player.audio !== null) return player.audio;
+      const audio = new Audio();
+      audio.preload = 'auto';
+      audio.addEventListener('timeupdate', () => {
+        player.position = audio.currentTime;
+        emit();
+      });
+      audio.addEventListener('durationchange', () => {
+        player.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        emit();
+      });
+      audio.addEventListener('play', () => {
+        player.playing = true;
+        emit();
+      });
+      audio.addEventListener('pause', () => {
+        player.playing = false;
+        emit();
+      });
+      audio.addEventListener('ended', () => {
+        void step(1);
+      });
+      audio.addEventListener('error', () => {
+        player.error = 'playback';
+        player.playing = false;
+        emit();
+      });
+      player.audio = audio;
+      return audio;
+    }
+
+    async function playAt(index) {
+      if (index < 0 || index >= player.queue.length) return;
+      player.index = index;
+      player.current = player.queue[index];
+      player.error = '';
+      player.position = 0;
+      player.duration = 0;
+      emit();
+      try {
+        const value = await call('music/track-url', {
+          trackId: player.current.id,
+          albumId: player.current.albumId,
+        });
+        const audio = ensureAudio();
+        player.preview = value.preview === true;
+        audio.src = value.url;
+        await audio.play();
+      } catch (failure) {
+        player.error = failure.message || 'playback';
+        player.playing = false;
+      }
+      emit();
+    }
+
+    async function step(delta) {
+      if (player.queue.length === 0) return;
+      const target = player.index + delta;
+      if (target < 0 || target >= player.queue.length) {
+        if (delta > 0) {
+          player.playing = false;
+          emit();
+        }
+        return;
+      }
+      await playAt(target);
+    }
+
+    function togglePlay() {
+      const audio = ensureAudio();
+      if (player.current === null) {
+        if (player.queue.length > 0) void playAt(0);
+        return;
+      }
+      if (audio.paused) void audio.play();
+      else audio.pause();
+    }
+
+    function playQueue(tracks, index) {
+      player.queue = tracks.slice();
+      void playAt(index);
+    }
+
+    function seekTo(seconds) {
+      const audio = ensureAudio();
+      if (Number.isFinite(seconds)) audio.currentTime = seconds;
+    }
+
+    /** Re-render on every player mutation without owning the state. */
+    function usePlayer() {
+      const [, force] = React.useReducer((value) => value + 1, 0);
+      React.useEffect(() => subscribe(force), []);
+      return player;
+    }
+
+    function fmtTime(ms) {
+      const total = Math.max(0, Math.round(ms / 1000));
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    /** Transport controls for the current track. */
+    function PlayerBar({ t }) {
+      const state = usePlayer();
+      const current = state.current;
+      if (current === null) return null;
+      const durationMs = state.duration > 0 ? state.duration * 1000 : current.durationMs;
+      return h('div', { className: 'ym-player' },
+        h('div', { className: 'ym-player-head' },
+          h('span', { className: 'ym-player-title' }, `${current.title} — ${current.artists}`),
+          state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null),
+        h('div', { className: 'ym-controls' },
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'aria-label': t('prev'),
+            onClick: () => void step(-1),
+          }, '\u23ee'),
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'data-primary': 'true',
+            'aria-label': state.playing ? t('pause') : t('play'),
+            onClick: togglePlay,
+          }, state.playing ? '\u23f8' : '\u25b6'),
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'aria-label': t('next'),
+            onClick: () => void step(1),
+          }, '\u23ed'),
+          h('input', {
+            className: 'ym-seek',
+            type: 'range',
+            min: 0,
+            max: Math.max(1, Math.round(durationMs / 1000)),
+            value: Math.round(state.position),
+            'aria-label': t('nowPlaying'),
+            onChange: (event) => seekTo(Number(event.target.value)),
+          }),
+          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
+        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null);
+    }
+
+    /** Search field, result rows, and the transport for whatever is playing. */
+    function SearchScreen({ t, status, onSignedOut }) {
+      const [query, setQuery] = React.useState('');
+      const [tracks, setTracks] = React.useState([]);
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const state = usePlayer();
+
+      React.useEffect(() => {
+        const trimmed = query.trim();
+        if (trimmed === '') {
+          setTracks([]);
+          setError('');
+          setBusy(false);
+          return undefined;
+        }
+        let cancelled = false;
+        setBusy(true);
+        const timer = window.setTimeout(async () => {
+          try {
+            const value = await call(`music/search?q=${encodeURIComponent(trimmed)}`);
+            if (cancelled) return;
+            setTracks(Array.isArray(value.tracks) ? value.tracks : []);
+            setError('');
+          } catch (failure) {
+            if (cancelled) return;
+            setTracks([]);
+            setError(failure.message || 'search failed');
+          } finally {
+            if (!cancelled) setBusy(false);
+          }
+        }, 300);
+        return () => {
+          cancelled = true;
+          window.clearTimeout(timer);
+        };
+      }, [query]);
+
+      const rows = tracks.map((track, index) => h('button', {
+        key: `${track.id}-${index}`,
+        type: 'button',
+        className: 'ym-result',
+        'data-active': state.current !== null && state.current.id === track.id ? 'true' : 'false',
+        onClick: () => playQueue(tracks, index),
+      },
+      track.cover !== null
+        ? h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' })
+        : h('span', { className: 'ym-result-cover' }),
+      h('span', { className: 'ym-result-text' },
+        h('span', { className: 'ym-result-title' }, track.title),
+        h('span', { className: 'ym-result-sub' }, track.artists)),
+      h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs))));
+
+      return h('div', { className: 'ym-form' },
+        h('input', {
+          className: 'ym-input ym-search',
+          value: query,
+          placeholder: t('searchPlaceholder'),
+          autoComplete: 'off',
+          spellCheck: false,
+          onChange: (event) => setQuery(event.target.value),
+        }),
+        busy ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
+        !busy && error === '' && query.trim() !== '' && tracks.length === 0
+          ? h('p', { className: 'ym-hint' }, t('nothingFound'))
+          : null,
+        tracks.length > 0 ? h('div', { className: 'ym-results' }, rows) : null,
+        h(PlayerBar, { t }),
+        h(AccountScreen, { t, status, onSignedOut }));
+    }
+
     /** Auth state machine for the popover body. */
-    function AuthBody({ t }) {
+    function PopoverBody({ t }) {
       const [state, setState] = React.useState({ loading: true, status: null, error: '' });
 
       // `t` is intentionally not a dependency: the locale binding may hand out a
@@ -349,7 +639,7 @@ window.__ModuleLoader__.load({
       }
       if (!state.status.configured) return h(SetupScreen, { t, onSaved: reload });
       if (!state.status.authorized) return h(LoginScreen, { t, onSignedIn: reload });
-      return h(AccountScreen, { t, status: state.status, onSignedOut: reload });
+      return h(SearchScreen, { t, status: state.status, onSignedOut: reload });
     }
 
     /**
@@ -422,7 +712,7 @@ window.__ModuleLoader__.load({
               'aria-label': t('close'),
               onClick: () => setOpen(false),
             }, '\u00d7')),
-          h(AuthBody, { t })),
+          h(PopoverBody, { t })),
           document.body,
         )
         : null;

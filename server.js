@@ -18,7 +18,7 @@ import {
   refreshAccessToken,
 } from './lib/oauth.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
-import { readAccount, readIdentity } from './lib/yandex.js';
+import { readAccount, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
@@ -202,6 +202,31 @@ export function apply(ctx) {
         uid: null,
       });
       return sendJson(response, 200, { ok: true, value: publicStatus(next) });
+    },
+
+    'music/search': async (request, response) => {
+      if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const query = text(new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('q') ?? '', 200);
+      if (query === '') return fail(response, 400, 'query', 'query is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await searchTracks(auth.accessToken, query);
+      if (result === null) return fail(response, 502, 'upstream', 'music search failed');
+      return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/track-url': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const trackId = text(String(body.trackId ?? ''), 32);
+      if (!/^\d+$/u.test(trackId)) return fail(response, 400, 'track', 'trackId is required');
+      const albumRaw = String(body.albumId ?? '');
+      const albumId = /^\d+$/u.test(albumRaw) ? albumRaw : null;
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await resolveTrackUrl(auth.accessToken, trackId, albumId);
+      if (result.error !== undefined) return fail(response, 502, result.error, 'track is not playable');
+      return sendJson(response, 200, { ok: true, value: result });
     },
   };
 
