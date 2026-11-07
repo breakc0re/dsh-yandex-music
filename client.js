@@ -138,6 +138,13 @@ window.__ModuleLoader__.load({
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       dislike: 'Не нравится',
+      menuNext: 'Следующим',
+      menuQueue: 'В конец очереди',
+      menuPlaylist: 'В плейлист…',
+      menuArtist: 'К исполнителю',
+      menuAlbum: 'К альбому',
+      menuCopy: 'Скопировать ссылку',
+      menuCopied: 'Ссылка скопирована',
       unlike: 'Убрать из «Мне нравится»',
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
@@ -259,6 +266,13 @@ window.__ModuleLoader__.load({
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       dislike: 'Dislike',
+      menuNext: 'Play next',
+      menuQueue: 'Add to the end of the queue',
+      menuPlaylist: 'Add to playlist…',
+      menuArtist: 'Go to the artist',
+      menuAlbum: 'Go to the album',
+      menuCopy: 'Copy link',
+      menuCopied: 'Link copied',
       unlike: 'Remove from liked tracks',
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
@@ -336,6 +350,13 @@ window.__ModuleLoader__.load({
 .ym-status{height:17px;margin:0;font-size:12px;line-height:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);opacity:0;transition:opacity .15s ease}
 .ym-status[data-on="true"]{opacity:1}
 .ym-status-error{color:var(--dsw-alias-label-danger,#ff6b6b)}
+.ym-menu{position:fixed;z-index:70;min-width:198px;max-width:270px;padding:5px;border-radius:11px;background:rgba(20,20,24,.98);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 14px 34px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:1px;animation:ym-menu-in .1s ease-out}
+@keyframes ym-menu-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.ym-menu-title{margin:2px 6px 6px;font-size:10.5px;line-height:1.35;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-menu-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12.5px;text-align:left;cursor:pointer;transition:background .1s ease}
+.ym-menu-item:hover{background:rgba(255,255,255,.09)}
+.ym-menu-item:disabled{opacity:.45;cursor:default}
+.ym-menu-icon{flex:none;width:16px;text-align:center;opacity:.75}
 /* Only one pane is laid out; the other three keep their state and scroll. */
 .ym-pane{display:none}
 .ym-pane[data-active="true"]{display:block}
@@ -1519,6 +1540,52 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ */
+    /* track context menu                                                  */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * One menu for every track row, opened by the right mouse button. A row
+     * hands over the navigation actions it owns, so «к исполнителю» appears
+     * only where that jump is actually possible.
+     */
+    const trackMenu = { open: false, x: 0, y: 0, track: null, actions: {}, listeners: new Set() };
+
+    function emitMenu() {
+      for (const listener of trackMenu.listeners) listener();
+    }
+
+    function openTrackMenu(event, track, actions) {
+      if (track === null || typeof track !== 'object') return;
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+      trackMenu.open = true;
+      trackMenu.track = track;
+      trackMenu.actions = actions ?? {};
+      // Keep the whole panel on screen, wherever the click happened.
+      trackMenu.x = Math.max(8, Math.min(event.clientX, window.innerWidth - 222));
+      trackMenu.y = Math.max(8, Math.min(event.clientY, window.innerHeight - 240));
+      emitMenu();
+    }
+
+    function closeTrackMenu() {
+      if (trackMenu.open !== true) return;
+      trackMenu.open = false;
+      emitMenu();
+    }
+
+    function useTrackMenu() {
+      const [, force] = React.useReducer((value) => value + 1, 0);
+      React.useEffect(() => {
+        const listener = () => force();
+        trackMenu.listeners.add(listener);
+        return () => {
+          trackMenu.listeners.delete(listener);
+        };
+      }, []);
+      return trackMenu;
+    }
+
+    /* ------------------------------------------------------------------ */
     /* playlists and likes                                                 */
     /* ------------------------------------------------------------------ */
 
@@ -1675,6 +1742,7 @@ window.__ModuleLoader__.load({
           key: `${track.id}-${index}`,
           className: 'ym-result',
           'data-active': playing !== '' && playing === String(track.id) ? 'true' : 'false',
+          onContextMenu: (event) => openTrackMenu(event, track),
         },
         h('button', {
           type: 'button',
@@ -2163,6 +2231,7 @@ window.__ModuleLoader__.load({
         className: 'ym-queue-row',
         'data-active': state.index === index ? 'true' : 'false',
         'data-over': dragOver === index ? 'true' : 'false',
+        onContextMenu: (event) => openTrackMenu(event, track),
         draggable: true,
         onDragStart: () => setDragFrom(index),
         onDragOver: (event) => {
@@ -2224,7 +2293,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Add the current track to a Yandex playlist, or create one on the spot. */
-    function AddToPlaylist({ t, track, onClose }) {
+    function AddToPlaylist({ t, track, onClose, inline }) {
       const [state, setState] = React.useState({ loading: true, items: [], error: '', done: '' });
       const [title, setTitle] = React.useState('');
       const [busy, setBusy] = React.useState(false);
@@ -2274,7 +2343,11 @@ window.__ModuleLoader__.load({
         }
       };
 
-      return h('div', { className: 'ym-add', role: 'dialog', 'aria-label': t('addToPlaylist') },
+      return h('div', {
+        className: inline === true ? 'ym-add ym-add-inline' : 'ym-add',
+        role: 'dialog',
+        'aria-label': t('addToPlaylist'),
+      },
         h('div', { className: 'ym-add-head' },
           h('span', { className: 'ym-add-title' }, t('addToPlaylist')),
           h('button', {
@@ -2665,6 +2738,117 @@ window.__ModuleLoader__.load({
             : null));
     }
 
+    /** The right-click menu itself: portalled so no pane can clip it. */
+    function TrackMenu({ t }) {
+      const state = useTrackMenu();
+      const [pane, setPane] = React.useState('root');
+      const [copied, setCopied] = React.useState(false);
+      const [liked, setLiked] = React.useState(false);
+      const track = state.track;
+
+      React.useEffect(() => {
+        if (state.open !== true) {
+          setPane('root');
+          setCopied(false);
+          return undefined;
+        }
+        const onDown = (event) => {
+          if (event.target instanceof Element && event.target.closest('.ym-menu') !== null) return;
+          closeTrackMenu();
+        };
+        const onKey = (event) => {
+          if (event.key === 'Escape') closeTrackMenu();
+        };
+        document.addEventListener('pointerdown', onDown, true);
+        document.addEventListener('keydown', onKey);
+        return () => {
+          document.removeEventListener('pointerdown', onDown, true);
+          document.removeEventListener('keydown', onKey);
+        };
+      }, [state.open]);
+
+      React.useEffect(() => {
+        if (state.open !== true || track === null) return undefined;
+        let alive = true;
+        setLiked(likes.ids.has(String(track.id)));
+        void loadLikes().then((ids) => {
+          if (alive) setLiked(ids.has(String(track.id)));
+        });
+        return () => {
+          alive = false;
+        };
+      }, [state.open, track]);
+
+      if (state.open !== true || track === null) return null;
+
+      const close = () => closeTrackMenu();
+      const item = (key, icon, label, onClick) => h('button', {
+        key,
+        className: 'ym-menu-item',
+        type: 'button',
+        role: 'menuitem',
+        onClick,
+      }, h('span', { className: 'ym-menu-icon', 'aria-hidden': 'true' }, icon), label);
+
+      return ReactDOM.createPortal(
+        h('div', {
+          className: 'ym-menu',
+          'data-yandex-music-menu': '',
+          role: 'menu',
+          style: { left: state.x, top: state.y },
+        },
+        h('p', { className: 'ym-menu-title' }, `${track.artists} \u2014 ${track.title}`),
+        pane === 'playlist'
+          ? h(AddToPlaylist, { t, track, inline: true, onClose: () => setPane('root') })
+          : [
+            item('next', '\u2934', t('menuNext'), () => {
+              close();
+              playNextInQueue(track);
+            }),
+            item('queue', '\u2261', t('menuQueue'), () => {
+              close();
+              addToQueue(track);
+            }),
+            item('playlist', '+', t('menuPlaylist'), () => setPane('playlist')),
+            item('like', liked ? '\u2665' : '\u2661', liked ? t('unlike') : t('like'), () => {
+              void (async () => {
+                try {
+                  await toggleLike(track);
+                  setLiked(likes.ids.has(String(track.id)));
+                } catch {
+                  /* a rejected like leaves the menu as it was */
+                }
+              })();
+            }),
+            typeof state.actions.onArtist === 'function' && track.artistId !== null && track.artistId !== undefined
+              ? item('artist', '\u2192', t('menuArtist'), () => {
+                const action = state.actions.onArtist;
+                close();
+                action(track.artistId, track.artists);
+              })
+              : null,
+            typeof state.actions.onAlbum === 'function' && track.albumId !== null && track.albumId !== undefined
+              ? item('album', '\u2192', t('menuAlbum'), () => {
+                const action = state.actions.onAlbum;
+                close();
+                action(track.albumId, track.albumTitle ?? '');
+              })
+              : null,
+            item('copy', '\u29c9', copied ? t('menuCopied') : t('menuCopy'), () => {
+              void (async () => {
+                try {
+                  await navigator.clipboard.writeText(`https://music.yandex.ru/track/${track.id}`);
+                  setCopied(true);
+                } catch {
+                  /* a blocked clipboard leaves the label as it is */
+                }
+              })();
+            }),
+          ]),
+        document.body,
+      );
+    }
+
     /** The «в очередь / следом» pair that every track list offers. */
     function RowActions({ t, track, onAdded }) {
       const announce = (message) => {
@@ -2776,6 +2960,7 @@ window.__ModuleLoader__.load({
         tabIndex: 0,
         'data-active': state.current !== null && String(state.current.id) === String(track.id) ? 'true' : 'false',
         onClick: () => playQueue(data.tracks, index),
+        onContextMenu: (event) => openTrackMenu(event, track, { onArtist: onOpenArtist, onAlbum: onOpenAlbum }),
         onKeyDown: (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -2935,6 +3120,7 @@ window.__ModuleLoader__.load({
         tabIndex: 0,
         'data-active': state.current !== null && String(state.current.id) === String(track.id) ? 'true' : 'false',
         onClick: () => playQueue(tracks, index),
+        onContextMenu: (event) => openTrackMenu(event, track, { onArtist: openArtist, onAlbum: openAlbum }),
         onKeyDown: (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -3133,7 +3319,10 @@ window.__ModuleLoader__.load({
       // The account panel belongs to the open card; closing it must not leave a
       // floating menu behind for the next time the card is opened.
       React.useEffect(() => {
-        if (!open) setAccountOpen(false);
+        if (!open) {
+          setAccountOpen(false);
+          closeTrackMenu();
+        }
       }, [open]);
 
       const place = React.useCallback(() => {
@@ -3166,7 +3355,7 @@ window.__ModuleLoader__.load({
         const onPointerDown = (event) => {
           const node = buttonRef.current;
           if (node !== null && node.contains(event.target)) return;
-          if (event.target instanceof Element && event.target.closest('[data-yandex-music-card],[data-yandex-music-lyrics]') !== null) return;
+          if (event.target instanceof Element && event.target.closest('[data-yandex-music-card],[data-yandex-music-lyrics],[data-yandex-music-menu]') !== null) return;
           setOpen(false);
         };
         const onMove = () => place();
@@ -3262,6 +3451,9 @@ window.__ModuleLoader__.load({
           document.body,
         )
         : null;
+      const menuLayer = open && anchor !== null
+        ? h(Guard, { fallback: null }, h(TrackMenu, { t }))
+        : null;
       const durationMs = playback.duration > 0
         ? playback.duration * 1000
         : current !== null ? current.durationMs : 0;
@@ -3284,7 +3476,8 @@ window.__ModuleLoader__.load({
             onClick: toggle,
           }, h('span', { className: 'ym-entry-icon', 'aria-hidden': 'true' }, h(NoteIcon, { size: 18 }))),
           card,
-          lyrics);
+          lyrics,
+          menuLayer);
       }
 
       return h(React.Fragment, null,
@@ -3358,7 +3551,8 @@ window.__ModuleLoader__.load({
               h('span', { className: 'ym-mini-time' }, `${fmtTime(playback.position * 1000)} / ${fmtTime(durationMs)}`))
             : null),
         card,
-        lyrics);
+        lyrics,
+        menuLayer);
     }
 
     /* ------------------------------------------------------------------ */
