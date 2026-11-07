@@ -74,6 +74,7 @@ window.__ModuleLoader__.load({
       unlike: 'Убрать из «Мне нравится»',
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
+      playbackFailed: 'Не удалось воспроизвести трек',
       remoteControl: 'Remote Control',
       deviceHint: 'Откройте ya.ru/device и введите код:',
       deviceWaiting: 'Ждём подтверждения на странице Яндекса…',
@@ -126,6 +127,7 @@ window.__ModuleLoader__.load({
       unlike: 'Remove from liked tracks',
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
+      playbackFailed: 'Could not play this track',
       remoteControl: 'Remote Control',
       deviceHint: 'Open ya.ru/device and enter the code:',
       deviceWaiting: 'Waiting for confirmation on the Yandex page…',
@@ -516,6 +518,47 @@ window.__ModuleLoader__.load({
 
     /** One audio element per page, shared by every bundle revision. */
     const AUDIO_KEY = '__dshYandexMusicAudio';
+    /** Every element this plugin ever created, so a fresh revision can stop them. */
+    const AUDIO_REGISTRY_KEY = '__dshYandexMusicAudioAll';
+
+    function audioRegistry() {
+      if (typeof window === 'undefined') return [];
+      if (!Array.isArray(window[AUDIO_REGISTRY_KEY])) window[AUDIO_REGISTRY_KEY] = [];
+      return window[AUDIO_REGISTRY_KEY];
+    }
+
+    /** Hard-stop an element and detach it from the media pipeline. */
+    function killAudio(element) {
+      try {
+        element.pause();
+        element.removeAttribute('src');
+        element.load();
+      } catch {
+        /* ignore a disposed element */
+      }
+    }
+
+    /**
+     * Only one thing may play at a time.
+     *
+     * A page can hold a leftover element from an earlier bundle revision. It is
+     * detached from the DOM and invisible to `querySelectorAll`, so every element
+     * the plugin creates is also recorded in a window-level registry and killed
+     * from there.
+     */
+    function silenceOthers(own) {
+      for (const element of audioRegistry()) {
+        if (element !== own) killAudio(element);
+      }
+      if (typeof document === 'undefined') return;
+      try {
+        for (const element of document.querySelectorAll('audio')) {
+          if (element !== own) killAudio(element);
+        }
+      } catch {
+        /* a hostile DOM must never break playback */
+      }
+    }
 
     function ensureAudio() {
       if (player.audio !== null) return player.audio;
@@ -529,6 +572,8 @@ window.__ModuleLoader__.load({
         audio.style.display = 'none';
         document.body.appendChild(audio);
       }
+      const registry = audioRegistry();
+      if (!registry.includes(audio)) registry.push(audio);
       if (typeof window !== 'undefined') window[AUDIO_KEY] = audio;
 
       // Handlers are replaced, never stacked: a new revision takes over the same
@@ -543,6 +588,8 @@ window.__ModuleLoader__.load({
           emit();
         },
         play: () => {
+          // Whoever starts, wins: every other element stops right here.
+          silenceOthers(audio);
           player.playing = true;
           emit();
         },
@@ -620,14 +667,21 @@ window.__ModuleLoader__.load({
         const audio = ensureAudio();
         silenceOthers(audio);
         player.preview = value.preview === true;
-        audio.pause();
+        // Assigning `src` stops the previous media by itself; an explicit
+        // pause() here would reject the previous play() promise and surface a
+        // bogus error in the UI.
         audio.src = value.url;
         await audio.play();
         if (token !== playToken) return;
         void sendFeedback('trackStarted', player.current);
       } catch (failure) {
         if (token !== playToken) return;
-        player.error = failure.message || 'playback';
+        // A superseded play() rejects with AbortError — that is not a failure.
+        if (failure instanceof Error && failure.name === 'AbortError') {
+          emit();
+          return;
+        }
+        player.error = 'playback';
         player.playing = false;
       }
       emit();
@@ -927,7 +981,11 @@ window.__ModuleLoader__.load({
             onChange: (event) => seekTo(Number(event.target.value)),
           }),
           h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
-        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null);
+        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null,
+        // Temporary: makes a stray second audio element visible in a screenshot.
+        state.error !== ''
+          ? h('p', { className: 'ym-hint' }, `audio: ${typeof document === 'undefined' ? 0 : document.querySelectorAll('audio').length}, registry: ${audioRegistry().length}`)
+          : null);
     }
 
     /** Search field, result rows, and the transport for whatever is playing. */
@@ -1229,7 +1287,12 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
-        ctx.effect(() => ctx.locale.register(NS, { ru, en }), 'yandex-music: dictionaries');
+      ctx.effect(() => {
+        // A fresh revision starts from silence: an element left by an older
+        // bundle has no UI of its own and would otherwise keep singing.
+        silenceOthers(null);
+      }, 'yandex-music: audio handover');
+      ctx.effect(() => ctx.locale.register(NS, { ru, en }), 'yandex-music: dictionaries');
         ctx.effect(() => installStyles(), 'yandex-music: styles');
         const t = ctx.locale.bind(NS);
 
