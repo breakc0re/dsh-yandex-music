@@ -68,6 +68,10 @@ window.__ModuleLoader__.load({
       nowPlaying: 'Сейчас играет',
       tabSearch: 'Поиск',
       tabWave: 'Волна',
+      tabPlaylists: 'Плейлисты',
+      likedPlaylist: 'Мне нравится',
+      like: 'Добавить в «Мне нравится»',
+      unlike: 'Убрать из «Мне нравится»',
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
       remoteControl: 'Remote Control',
@@ -116,6 +120,10 @@ window.__ModuleLoader__.load({
       nowPlaying: 'Now playing',
       tabSearch: 'Search',
       tabWave: 'My Wave',
+      tabPlaylists: 'Playlists',
+      likedPlaylist: 'Liked tracks',
+      like: 'Add to liked tracks',
+      unlike: 'Remove from liked tracks',
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
       remoteControl: 'Remote Control',
@@ -170,6 +178,7 @@ window.__ModuleLoader__.load({
 .ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-result[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
 .ym-result-cover{flex:none;width:32px;height:32px;border-radius:6px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
+.ym-result-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-size:14px}
 .ym-result-text{min-width:0;display:flex;flex-direction:column;gap:1px}
 .ym-result-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-result-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-size:11px}
@@ -659,6 +668,110 @@ window.__ModuleLoader__.load({
       await step(1);
     }
 
+    /* ------------------------------------------------------------------ */
+    /* playlists and likes                                                 */
+    /* ------------------------------------------------------------------ */
+
+    /** Liked ids, read once per session so the heart shows a real state. */
+    const likes = { ids: new Set(), loaded: false, inflight: null };
+
+    async function loadLikes() {
+      if (likes.loaded) return likes.ids;
+      if (likes.inflight !== null) return likes.inflight;
+      likes.inflight = (async () => {
+        try {
+          // kind 3 is «Мне нравится»; it never appears in the playlists list.
+          const value = await call('music/playlist', { kind: 3 });
+          likes.ids = new Set((value.tracks || []).map((track) => String(track.id)));
+          likes.loaded = true;
+        } catch {
+          /* an unreadable likes list simply means an empty heart */
+        } finally {
+          likes.inflight = null;
+        }
+        return likes.ids;
+      })();
+      return likes.inflight;
+    }
+
+    async function toggleLike(track) {
+      const key = String(track.id);
+      const next = !likes.ids.has(key);
+      await call('music/like', { trackId: key, albumId: track.albumId, liked: next });
+      if (next) likes.ids.add(key);
+      else likes.ids.delete(key);
+      likes.loaded = true;
+    }
+
+    /** «Мне нравится» first, then whatever playlists the account owns. */
+    function PlaylistsPane({ t }) {
+      const [state, setState] = React.useState({ loading: true, playlists: [], error: '' });
+      const [busy, setBusy] = React.useState(false);
+
+      React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const value = await call('music/playlists');
+            if (cancelled) return;
+            setState({
+              loading: false,
+              playlists: Array.isArray(value.playlists) ? value.playlists : [],
+              error: '',
+            });
+          } catch (failure) {
+            if (!cancelled) setState({ loading: false, playlists: [], error: failure.message || 'playlists failed' });
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }, []);
+
+      const open = async (kind) => {
+        if (busy) return;
+        setBusy(true);
+        try {
+          const value = await call('music/playlist', { kind });
+          const tracks = Array.isArray(value.tracks) ? value.tracks : [];
+          if (tracks.length > 0) playQueue(tracks, 0);
+        } catch (failure) {
+          setState((previous) => ({ ...previous, error: failure.message || 'playlist failed' }));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const rows = [
+        h('button', {
+          key: 'liked',
+          type: 'button',
+          className: 'ym-result',
+          onClick: () => void open(3),
+        },
+        h('span', { className: 'ym-result-icon', 'aria-hidden': 'true' }, '\u2665'),
+        h('span', { className: 'ym-result-text' },
+          h('span', { className: 'ym-result-title' }, t('likedPlaylist')))),
+        ...state.playlists.map((playlist) => h('button', {
+          key: `k${playlist.kind}`,
+          type: 'button',
+          className: 'ym-result',
+          onClick: () => void open(playlist.kind),
+        },
+        playlist.cover !== null
+          ? h('img', { className: 'ym-result-cover', src: playlist.cover, alt: '', loading: 'lazy' })
+          : h('span', { className: 'ym-result-cover' }),
+        h('span', { className: 'ym-result-text' },
+          h('span', { className: 'ym-result-title' }, playlist.title),
+          h('span', { className: 'ym-result-sub' }, `${playlist.owner} · ${playlist.trackCount}`)))),
+      ];
+
+      return h('div', { className: 'ym-form' },
+        state.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
+        h('div', { className: 'ym-results' }, rows));
+    }
+
     function seekTo(seconds) {
       const audio = ensureAudio();
       if (Number.isFinite(seconds)) audio.currentTime = seconds;
@@ -680,6 +793,25 @@ window.__ModuleLoader__.load({
     function PlayerBar({ t }) {
       const state = usePlayer();
       const current = state.current;
+      const currentId = current === null ? '' : String(current.id);
+      const [likedNow, setLikedNow] = React.useState(false);
+
+      React.useEffect(() => {
+        let alive = true;
+        if (currentId === '') {
+          setLikedNow(false);
+          return () => {
+            alive = false;
+          };
+        }
+        void loadLikes().then((ids) => {
+          if (alive) setLikedNow(ids.has(currentId));
+        });
+        return () => {
+          alive = false;
+        };
+      }, [currentId]);
+
       if (current === null) return null;
       const durationMs = state.duration > 0 ? state.duration * 1000 : current.durationMs;
       return h('div', { className: 'ym-player' },
@@ -706,6 +838,22 @@ window.__ModuleLoader__.load({
             'aria-label': t('next'),
             onClick: () => void step(1),
           }, '\u23ed'),
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'aria-label': likedNow ? t('unlike') : t('like'),
+            title: likedNow ? t('unlike') : t('like'),
+            onClick: () => {
+              void (async () => {
+                try {
+                  await toggleLike(current);
+                  setLikedNow(likes.ids.has(currentId));
+                } catch {
+                  /* a rejected like leaves the heart as it was */
+                }
+              })();
+            },
+          }, likedNow ? '\u2665' : '\u2661'),
           h('input', {
             className: 'ym-seek',
             type: 'range',
@@ -822,10 +970,16 @@ window.__ModuleLoader__.load({
           h('button', {
             className: 'ym-tab',
             type: 'button',
+            'data-active': tab === 'playlists' ? 'true' : 'false',
+            onClick: () => setTab('playlists'),
+          }, t('tabPlaylists')),
+          h('button', {
+            className: 'ym-tab',
+            type: 'button',
             'data-active': tab === 'wave' ? 'true' : 'false',
             onClick: () => setTab('wave'),
           }, t('tabWave'))),
-        tab === 'wave' ? wavePane : searchPane,
+        tab === 'wave' ? wavePane : tab === 'playlists' ? h(PlaylistsPane, { t }) : searchPane,
         h(PlayerBar, { t }),
         h(AccountScreen, { t, status, onSignedOut }));
     }
