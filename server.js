@@ -121,10 +121,23 @@ export function apply(ctx) {
       const clientId = text(body.clientId, 200);
       if (clientId === '') return fail(response, 400, 'client-id', 'client_id is required');
       const auth = await readAuth(dir);
+      // A token belongs to the application that issued it. Keeping it after the
+      // client changed reported "authorized" while every request still used the
+      // old token, so a client switch always starts from a clean sign-in.
+      const sameClient = clientId === auth.clientId;
       const next = await writeAuth(dir, {
         ...auth,
         clientId,
         clientSecret: text(body.clientSecret, 200),
+        ...sameClient ? {} : {
+          accessToken: '',
+          refreshToken: '',
+          expiresAt: 0,
+          scope: '',
+          login: '',
+          uid: null,
+          plus: false,
+        },
       });
       return sendJson(response, 200, { ok: true, value: publicStatus(next) });
     },
