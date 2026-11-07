@@ -137,6 +137,7 @@ window.__ModuleLoader__.load({
       waveFailed: 'Волна не запустилась',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
+      dislike: 'Не нравится',
       unlike: 'Убрать из «Мне нравится»',
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
@@ -257,6 +258,7 @@ window.__ModuleLoader__.load({
       waveFailed: 'The wave did not start',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
+      dislike: 'Dislike',
       unlike: 'Remove from liked tracks',
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
@@ -417,6 +419,9 @@ window.__ModuleLoader__.load({
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
 .ym-icon-button{transition:background .12s ease,color .12s ease,transform .1s ease}.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}.ym-icon-button:active{transform:scale(.94)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
+.ym-icon-button:disabled{cursor:default}
+.ym-spinner{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:ym-spin .7s linear infinite}
+@keyframes ym-spin{to{transform:rotate(360deg)}}
 .ym-seek{flex:1 1 auto;min-width:0;height:8px;margin:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 2px}
 .ym-seek-row .ym-icon-button{width:20px;height:20px}
@@ -845,6 +850,8 @@ window.__ModuleLoader__.load({
       muted: false,
       lyricsOpen: false,
       restoring: 0,
+      loading: false,
+      wave: false,
       listeners: new Set(),
     };
 
@@ -895,6 +902,104 @@ window.__ModuleLoader__.load({
      * instead of flashing a loader and refetching everything it just had.
      */
     const paneCache = { playlists: null, stations: null, likes: null };
+
+    /**
+     * Media Session is what puts the track into the OS media overlay and makes
+     * the hardware play/pause/next keys work. Handlers are re-registered on
+     * every bundle revision — `setActionHandler` replaces instead of stacking,
+     * so a hot reload can never leave a stale closure behind.
+     */
+    const MEDIA_SEEK_STEP = 10;
+    let mediaSyncedAt = 0;
+    let mediaTrackKey = '';
+
+    function syncMediaSession(force) {
+      if (typeof navigator === 'undefined' || navigator.mediaSession === undefined) return;
+      const session = navigator.mediaSession;
+      const stamp = Date.now();
+      if (force !== true && stamp - mediaSyncedAt < 900) return;
+      mediaSyncedAt = stamp;
+
+      if (player.current === null) {
+        session.metadata = null;
+        session.playbackState = 'none';
+        return;
+      }
+
+      const key = String(player.current.id);
+      if (key !== mediaTrackKey || force === true) {
+        mediaTrackKey = key;
+        if (typeof MediaMetadata === 'function') {
+          try {
+            session.metadata = new MediaMetadata({
+              title: player.current.title,
+              artist: player.current.artists,
+              album: player.current.albumTitle === '' ? undefined : player.current.albumTitle,
+              artwork: typeof player.current.cover === 'string'
+                ? [{ src: player.current.cover, sizes: '200x200', type: 'image/jpeg' }]
+                : [],
+            });
+          } catch {
+            /* metadata is a nicety, not a requirement */
+          }
+        }
+      }
+
+      session.playbackState = player.playing ? 'playing' : 'paused';
+      if (player.duration > 0 && typeof session.setPositionState === 'function') {
+        try {
+          session.setPositionState({
+            duration: player.duration,
+            playbackRate: 1,
+            position: Math.min(Math.max(0, player.position), player.duration),
+          });
+        } catch {
+          /* an engine may reject an odd duration */
+        }
+      }
+    }
+
+    function seekBy(delta) {
+      const audio = ensureAudio();
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      seekTo(Math.max(0, Math.min(audio.duration - 1, (audio.currentTime || 0) + delta)));
+    }
+
+    function wireMediaSession() {
+      if (typeof navigator === 'undefined' || navigator.mediaSession === undefined) return;
+      const session = navigator.mediaSession;
+      const resume = () => {
+        if (player.current === null) return;
+        const audio = ensureAudio();
+        if (audio.getAttribute('src') === null) {
+          void playAt(player.index < 0 ? 0 : player.index, player.restoring);
+          return;
+        }
+        void audio.play();
+      };
+      const handlers = {
+        play: resume,
+        pause: () => {
+          if (player.audio !== null) player.audio.pause();
+        },
+        previoustrack: () => void step(-1),
+        nexttrack: () => void step(1),
+        seekbackward: (details) => seekBy(-(typeof details?.seekOffset === 'number' ? details.seekOffset : MEDIA_SEEK_STEP)),
+        seekforward: (details) => seekBy(typeof details?.seekOffset === 'number' ? details.seekOffset : MEDIA_SEEK_STEP),
+        seekto: (details) => {
+          if (typeof details?.seekTime === 'number') seekTo(details.seekTime);
+        },
+      };
+      for (const [action, handler] of Object.entries(handlers)) {
+        try {
+          session.setActionHandler(action, handler);
+        } catch {
+          /* an unsupported action is fine */
+        }
+      }
+    }
+
+    wireMediaSession();
 
     /**
      * The last playing track and where it stopped. DSH restarts lose the page,
@@ -959,6 +1064,7 @@ window.__ModuleLoader__.load({
 
     function emit() {
       for (const listener of player.listeners) listener();
+      syncMediaSession();
     }
 
     function subscribe(listener) {
@@ -1112,6 +1218,7 @@ window.__ModuleLoader__.load({
       const seekTo = Number.isFinite(startAt) && startAt > 0 ? startAt : 0;
       player.position = seekTo;
       player.duration = 0;
+      player.loading = true;
       emit();
       try {
         const value = await call('music/track-url', {
@@ -1139,11 +1246,14 @@ window.__ModuleLoader__.load({
         }
         await audio.play();
         if (token !== playToken) return;
+        player.loading = false;
         player.restoring = 0;
         saveResume(true);
+        syncMediaSession(true);
         void sendFeedback('trackStarted', player.current);
       } catch (failure) {
         if (token !== playToken) return;
+        player.loading = false;
         // A superseded play() rejects with AbortError — that is not a failure.
         if (failure instanceof Error && failure.name === 'AbortError') {
           emit();
@@ -1155,8 +1265,12 @@ window.__ModuleLoader__.load({
       emit();
     }
 
-    async function step(delta) {
+    async function step(delta, report = true) {
       if (player.queue.length === 0) return;
+      // A manual jump inside a wave is a skip, and the rotor learns from it.
+      if (report === true && waveSession.active && player.current !== null && player.playing) {
+        void sendFeedback('skip', player.current, player.position);
+      }
       const target = player.index + delta;
       if (target < 0 || target >= player.queue.length) {
         if (delta > 0) {
@@ -1189,6 +1303,7 @@ window.__ModuleLoader__.load({
 
     function playQueue(tracks, index) {
       waveSession.active = false;
+      player.wave = false;
       player.queue = tracks.slice();
       void playAt(index);
     }
@@ -1197,6 +1312,7 @@ window.__ModuleLoader__.load({
     function loadQueue(tracks) {
       if (!Array.isArray(tracks) || tracks.length === 0) return;
       waveSession.active = false;
+      player.wave = false;
       player.queue = tracks.slice();
       player.index = -1;
       player.current = null;
@@ -1238,6 +1354,7 @@ window.__ModuleLoader__.load({
       const tracks = Array.isArray(value.tracks) ? value.tracks : [];
       if (tracks.length === 0) throw new Error('wave is empty');
       waveSession.active = true;
+      player.wave = true;
       waveSession.station = typeof value.station === 'string' && value.station !== '' ? value.station : target;
       waveSession.batchId = typeof value.batchId === 'string' ? value.batchId : '';
       player.queue = tracks.slice();
@@ -1335,6 +1452,7 @@ window.__ModuleLoader__.load({
 
     function clearQueue() {
       waveSession.active = false;
+      player.wave = false;
       player.queue = [];
       player.index = -1;
       player.current = null;
@@ -2280,8 +2398,11 @@ window.__ModuleLoader__.load({
             type: 'button',
             'data-primary': 'true',
             'aria-label': state.playing ? t('pause') : t('play'),
+            disabled: state.loading,
             onClick: togglePlay,
-          }, state.playing ? '\u23f8' : '\u25b6'),
+          }, state.loading
+            ? h('span', { className: 'ym-spinner', 'aria-hidden': 'true' })
+            : state.playing ? '\u23f8' : '\u25b6'),
           h('button', {
             className: 'ym-icon-button',
             type: 'button',
@@ -2298,12 +2419,28 @@ window.__ModuleLoader__.load({
                 try {
                   await toggleLike(current);
                   setLikedNow(likes.ids.has(currentId));
+                  // A «like» during a wave teaches the rotor what to keep.
+                  if (state.wave && likes.ids.has(currentId)) {
+                    void sendFeedback('like', current, state.position);
+                  }
                 } catch {
                   /* a rejected like leaves the heart as it was */
                 }
               })();
             },
           }, likedNow ? '\u2665' : '\u2661'),
+          state.wave
+            ? h('button', {
+              className: 'ym-icon-button',
+              type: 'button',
+              'aria-label': t('dislike'),
+              title: t('dislike'),
+              onClick: () => {
+                void sendFeedback('dislike', current, state.position);
+                void step(1, false);
+              },
+            }, '\u2715')
+            : null,
           h('button', {
             className: 'ym-icon-button',
             type: 'button',
