@@ -395,7 +395,7 @@ window.__ModuleLoader__.load({
 .ym-station .ym-chip-title{font-size:10.5px;line-height:1.25;max-height:2.5em;overflow:hidden}
 .ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
-.ym-player-title{min-width:0;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-player-title{display:block;flex:1 1 auto;min-width:0;font-size:13px;font-weight:500;overflow:hidden}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
 .ym-controls{display:flex;align-items:center;gap:4px}
 .ym-controls .ym-icon-button{width:32px;height:32px}
@@ -2205,7 +2205,7 @@ window.__ModuleLoader__.load({
 
       return h('div', { className: 'ym-player' },
         h('div', { className: 'ym-player-head' },
-          h('span', { className: 'ym-player-title' }, `${current.title} — ${current.artists}`),
+          h(Marquee, { text: `${current.title} \u2014 ${current.artists}`, className: 'ym-player-title' }),
           state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null),
         h('div', { className: 'ym-seek-row' },
           h('input', {
@@ -2908,7 +2908,7 @@ window.__ModuleLoader__.load({
      * One-line track title that scrolls only while it actually overflows, so a
      * short name stays still instead of drifting for no reason.
      */
-    function Marquee({ text }) {
+    function Marquee({ text, className }) {
       const boxRef = React.useRef(null);
       const [scroll, setScroll] = React.useState(false);
 
@@ -2921,7 +2921,11 @@ window.__ModuleLoader__.load({
         setScroll(node.scrollWidth > node.clientWidth + 2);
       }, [text]);
 
-      return h('span', { className: 'ym-mini-title-line', ref: boxRef },
+      const classes = typeof className === 'string' && className !== ''
+        ? `${className} ym-mini-title-line`
+        : 'ym-mini-title-line';
+
+      return h('span', { className: classes, ref: boxRef },
         h('span', { className: 'ym-mini-title-inner', 'data-scroll': scroll ? 'true' : 'false' },
           text,
           scroll ? h('span', { 'aria-hidden': 'true' }, text) : null));
