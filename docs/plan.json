@@ -1,0 +1,156 @@
+{
+  "feature": "Плагин плеера Яндекс Музыки в подвале сайдбара DSH + перенос Remote Control в «Ещё»",
+  "source": "conversation (2 скриншота: строка Remote Control в подвале сайдбара и меню «Ещё»)",
+  "codebase": "C:\\Users\\breakc0re\\Desktop\\Нейросети\\Plugins",
+  "useCases": [
+    "1. Плагин устанавливается в профиль desktop и показывает свою строку в подвале сайдбара на месте Remote Control",
+    "2. Remote Control исчезает из подвала и появляется строкой в меню «Ещё», откуда открывается управление подключением",
+    "3. Хост-половина хранит OAuth-токен Яндекса и проксирует запросы к api.music.yandex.net",
+    "4. В поповере можно вставить токен и искать треки",
+    "5. Треки воспроизводятся, есть очередь и управление; музыка не прерывается при закрытии поповера",
+    "6. Доступны свои плейлисты и «Мне нравится»",
+    "7. Работает «Моя волна» с подгрузкой и фидбеком",
+    "8. Плагин локализован, документирован и корректно снимается без следов"
+  ],
+  "stories": [
+    {
+      "id": "S1",
+      "title": "Каркас плагина и строка «Яндекс Музыка» в подвале сайдбара",
+      "covers": [1],
+      "tasks": [
+        "Создать пакет dsh-yandex-music: package.json (type module, main server.js, exports \".\", \"./client\", dsh.client.platform=web, immediately=true, inject=[\"@deepseek-ai/dsh-client-ui-sidebar\"], dsh.bundle.patch=./cordis.patch.yml)",
+        "server.js — пустая хостовая половина: export const inject = []; export function apply(ctx) {}",
+        "client.js — window.__ModuleLoader__.load({ id: 'dsh-yandex-music', factory(require) { ... } }), вернуть { inject: ['slots','locale'], apply(ctx) }",
+        "Зарегистрировать sidebar.footer.action: id 'yandex-music', order 26, label через t(), иконка-нота; кнопка в стиле dsh-qoder-limits с поддержкой wide/rail",
+        "cordis.patch.yml с - insert: [{ id: yandex-music, name: dsh-yandex-music }]",
+        "Установка: добавить \"dsh-yandex-music\": \"file:...\" в ~/.dsh/profiles/desktop/package.json, выполнить pnpm install, добавить insert в ~/.dsh/profiles/desktop/cordis.patch.yml"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "После перезагрузки Web в подвале сайдбара видна строка «Яндекс Музыка» на месте Remote Control; клик открывает пустую карточку",
+      "scopeNotes": "Только каркас и точка монтирования. Никакой сети и воспроизведения. Записи в ~/.dsh/profiles/desktop лежат вне workspace — нужен danger-full-access или ручной запуск команд пользователем.",
+      "blockedBy": [],
+      "techGuidance": "Слот sidebar.footer.action — list, scope root, объявлен в @deepseek-ai/dsh-client-ui-sidebar. order 26 совпадает с Remote Control. Клиентский бандл грузится через window.__ModuleLoader__.load и отдаётся по /plugins/dsh-yandex-music/client.js. Стили — в <style data-plugin=\"yandex-music\">."
+    },
+    {
+      "id": "S2",
+      "title": "Перенос Remote Control из подвала в меню «Ещё»",
+      "covers": [2],
+      "tasks": [
+        "Перекрыть запись bridge: зарегистрировать sidebar.footer.action с id 'agents-anywhere-next', priority -1 и компонентом () => null",
+        "Зарегистрировать sidebar.panellist.actions: id 'yandex-music-remote', locale, inject: () => ({ openRemote })",
+        "Строка меню: MenuItemButton из @deepseek-ai/dsh-client-ui-primitives с иконкой смартфона и текстом «Remote Control»",
+        "onSelect: onDismiss(); ctx.get('pluginNavigation')?.openBundle('@agents-anywhere/dsh-bridge-next')",
+        "Защитить отсутствие pluginNavigation: если сервиса нет, строка не рендерится (ctx.inject(['pluginNavigation'], ...) + snapshot-store, как в ui-entry-customization)",
+        "Проверить, что при выключении плагина тень снимается и Remote Control возвращается в подвал"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "Remote Control пропал из подвала; в меню «Ещё» появилась строка Remote Control, открывающая страницу настроек Agents Anywhere с управлением подключением",
+      "scopeNotes": "Не патчим app.asar и не трогаем бандл bridge. Тень по id — штатный механизм слота, но держится на том, что bridge регистрирует именно id 'agents-anywhere-next'.",
+      "blockedBy": ["S1"],
+      "techGuidance": "В list-слоте записи сортируются по priority, затем order, а entriesOfSlot берёт первую запись на каждый id — поэтому priority -1 перекрывает запись bridge с priority 0. openBundle сам вызывает ctx.layout.selectPanel('plugins') и открывает страницу бандла, где bridge рендерит plugins.bundle.config с ключом '@agents-anywhere/dsh-bridge-next'. Кнопка «Ещё» уже существует: sidebar.panellist.actions непуст (регистрация ui-entry-customization)."
+    },
+    {
+      "id": "S3",
+      "title": "Хост-половина: хранение токена и прокси Яндекс Музыки",
+      "covers": [3],
+      "tasks": [
+        "lib/yandex.js — клиент https://api.music.yandex.net с заголовками Authorization: OAuth <token>, X-Yandex-Music-Client, Accept-Language: ru",
+        "Хранение токена: Host credentials (ctx.credentials) с ключом yandex-music/token; фолбэк — JSON-файл 0600 в каталоге данных плагина",
+        "Маршруты через ctx.webServer.register({ kind: 'exact', path: '/api/plugins/yandex-music/<op>' }): account, search, track-url, playlists, likes, rotor",
+        "HMR-безопасное снятие маршрутов через globalThis[Symbol.for('dsh.yandex-music.route')] (паттерн dsh-deepseek-balance-next)",
+        "Единый конверт ответа { ok: true, value } / { ok: false, error: { code, message } }; токен никогда не сериализуется в ответ"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "С сохранённым токеном POST /api/plugins/yandex-music/account возвращает uid и логин, а search по «Кино» возвращает список треков",
+      "scopeNotes": "Только хост и транспорт, без UI. Эндпоинты Яндекса неофициальные — весь разбор ответов изолирован в lib/yandex.js.",
+      "blockedBy": ["S1"],
+      "techGuidance": "inject: ['webServer']. Прямой URL трека: GET /tracks/{id}:{albumId}/download-info → downloadInfo[0].downloadInfoUrl (XML с host/path/ts/s) → sign = md5('XGRlBW9FXlekgbPrRHuSiA' + path.slice(1) + s) → https://{host}/get-mp3/{sign}/{ts}{path}. Алгоритм реверс-инжинирен — держать в одном модуле с явной ошибкой code: 'track-url'."
+    },
+    {
+      "id": "S4",
+      "title": "Поповер: ввод токена и поиск треков",
+      "covers": [4],
+      "tasks": [
+        "Карточка-поповер через createPortal: позиционирование у строки, закрытие по Esc и клику вне, ширина ~340px",
+        "Экран «нет токена»: поле ввода, кнопка «Сохранить», короткая инструкция как получить OAuth-токен",
+        "Поле поиска с debounce 300мс и список результатов: обложка, название, исполнитель, длительность",
+        "Состояния: загрузка, пусто, ошибка сети, 401 (токен недействителен)",
+        "Локализация ru/en через ctx.locale.register('yandexMusic', { ru, en }) и ctx.locale.bind"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "Пользователь вставляет токен, ищет «Кино» и видит список треков с обложками",
+      "scopeNotes": "Воспроизведения ещё нет — клик по треку пока только выделяет его.",
+      "blockedBy": ["S3"],
+      "techGuidance": "Поповер рендерится в портал, чтобы не обрезался сайдбаром; строка в подвале остаётся кнопкой с aria-haspopup=\"dialog\". Запросы — window.fetch к /api/plugins/yandex-music/*, credentials: 'include', cache: 'no-store'."
+    },
+    {
+      "id": "S5",
+      "title": "Воспроизведение, очередь и мини-плеер в строке",
+      "covers": [5],
+      "tasks": [
+        "Модульный стор плеера вне React и один <audio> на плагин — музыка продолжает играть при закрытии поповера",
+        "Получение URL трека через хост-маршрут track-url; обработка 451/403 (нет подписки) отдельным сообщением",
+        "Управление: play/pause, next/prev, перемотка, громкость, повтор, шаффл",
+        "Очередь: добавление из поиска, удаление, переход к треку",
+        "Компактная строка в подвале показывает текущий трек и play/pause, когда что-то играет",
+        "Обработка события ended → автоматический переход к следующему треку"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "Трек играет, продолжает играть после закрытия поповера, next/prev и перемотка работают",
+      "scopeNotes": "Плейлистов и волны ещё нет — очередь собирается только из поиска.",
+      "blockedBy": ["S4"],
+      "techGuidance": "Аудио-элемент создаётся императивно (new Audio()) и живёт в модуле, а не в дереве React — иначе закрытие поповера размонтирует его и оборвёт звук. Состояние держать в createSnapshotStore из @deepseek-ai/dsh-client-store, строку подвала подписывать через селектор."
+    },
+    {
+      "id": "S6",
+      "title": "Плейлисты и «Мне нравится»",
+      "covers": [6],
+      "tasks": [
+        "GET /users/{uid}/playlists/list → список плейлистов в поповере",
+        "GET /users/{uid}/playlists/{kind} → треки плейлиста и воспроизведение плейлиста целиком",
+        "Лайк/анлайк: POST /users/{uid}/likes/tracks/add-multiple и /remove, оптимистичное обновление",
+        "Вкладки поповера: Поиск / Плейлисты / Очередь",
+        "Кэш списка плейлистов на 60с, чтобы не дёргать API при каждом открытии"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "Плейлист открывается и играет; лайк сохраняется и виден после перезагрузки Web",
+      "scopeNotes": "Требует uid из /account/status — если он не получен, вкладка «Плейлисты» показывает ошибку, а не пустоту.",
+      "blockedBy": ["S5"],
+      "techGuidance": "Лайки в Яндексе — POST с телом вида { 'track-ids': 'id1:id2' } и content-type application/x-www-form-urlencoded; ответ 200 без тела. После изменения инвалидировать кэш лайков."
+    },
+    {
+      "id": "S7",
+      "title": "«Моя волна» и рекомендации",
+      "covers": [7],
+      "tasks": [
+        "GET /rotor/station/user:onyourwave/tracks?settings2=true → первая порция очереди волны",
+        "Отправка фидбека POST /rotor/station/{station}/feedback: trackStarted, trackFinished, skip",
+        "Кнопка «Моя волна» в поповере, бесконечная подгрузка при приближении к концу очереди",
+        "Обработка ошибок ротора: нет подписки, регион, пустая станция — понятные сообщения",
+        "Сброс станции при смене токена"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "«Моя волна» играет и сама подгружает следующие треки, фидбек уходит на сервер",
+      "scopeNotes": "Самый хрупкий блок: ротор меняет формат чаще остальных эндпоинтов. Изолировать в lib/rotor.js и не давать его ошибкам ломать поиск и плейлисты.",
+      "blockedBy": ["S5"],
+      "techGuidance": "Станция 'user:onyourwave' требует авторизованного uid; batchId из ответа нужно передавать в фидбек вместе с trackId. При 404/403 показывать «Волна недоступна для этого аккаунта», а не общий сбой."
+    },
+    {
+      "id": "S8",
+      "title": "Локализация, README и проверка снятия",
+      "covers": [8],
+      "tasks": [
+        "Полные словари ru/en, все строки через t(), ключи совпадают с en как источником истины",
+        "README: установка, получение OAuth-токена, ограничения (неофициальный API, подписка Plus), как удалить плагин",
+        "Проверка: перезапуск Web, HMR-перезагрузка клиента, отсутствие ошибок в консоли и в логе плагинов",
+        "Проверка снятия: убрать insert из cordis.patch.yml → строка плеера исчезает, Remote Control возвращается в подвал, меню «Ещё» возвращается к штатному виду",
+        "Проверить, что при отсутствии токена и при 401 плагин не блокирует загрузку остальных плагинов"
+      ],
+      "executionFit": "fits-one-run",
+      "demoBoundary": "Плагин ставится и снимается без следов; после снятия Remote Control снова в подвале",
+      "scopeNotes": "Финальная проверка целостности: тень по id не должна остаться висеть, если плагин выключен.",
+      "blockedBy": ["S2", "S6", "S7"],
+      "techGuidance": "Снятие проверять именно через cordis.patch.yml, а не через удаление из node_modules: Loader держит запись по id, и осиротевшая тень Remote Control — главный риск всей схемы."
+    }
+  ]
+}

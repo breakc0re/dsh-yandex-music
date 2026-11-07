@@ -1,0 +1,6 @@
+# Yandex Music player: sidebar footer entry + popover.
+# The Host picks this up on the fly; the client bundle is served from
+# /plugins/dsh-yandex-music/client.js through the module graph.
+- insert:
+    - id: yandex-music
+      name: dsh-yandex-music
