@@ -2,7 +2,7 @@
   <img src="docs/screenshots/hero.png" alt="Яндекс.Музыка в боковой панели DSH" width="100%">
 </p>
 
-<h1 align="center">Яндекс.Музыка для DSH</h1>
+<h1 align="center"><img src="assets/icon-180.png" alt="" width="64" height="64"><br>Яндекс.Музыка для DSH</h1>
 
 <p align="center">
   Музыка прямо в боковой панели DeepSeek Harness — без переключения окон, вкладок и «сейчас открою браузер».

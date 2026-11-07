@@ -1,0 +1,11 @@
+# Готовый файл для PR в awesome-dsh-plugin.
+#
+# Куда положить: data/plugins/breakc0re__dsh-yandex-music.yml
+# Один файл — это вся заявка. README списка генерируются автоматически,
+# руками их трогать не нужно.
+
+name: breakc0re/dsh-yandex-music
+url: https://github.com/breakc0re/dsh-yandex-music
+category: ui
+en: Yandex Music player in the DSH sidebar: search, a draggable queue, playlists, My Wave stations, lyrics with karaoke timing and a Russian translation, media keys, and playback that survives a restart.
+icon: https://raw.githubusercontent.com/breakc0re/dsh-yandex-music/main/assets/icon-180.png

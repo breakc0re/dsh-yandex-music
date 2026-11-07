@@ -42,19 +42,33 @@ npm pack --dry-run
 
 Маркет `realguan/dsh-plugin-market` каждый день в 03:17 UTC пересобирает индекс
 из [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
-(данные под CC0). Поэтому попадание в маркет = PR в этот список.
+(данные под CC0). Поэтому попадание в маркет = один файл в их репозитории.
 
-Добавить одну строку в раздел **UI Enhancements**:
+Готовый файл лежит в [`docs/awesome-entry.yml`](awesome-entry.yml). Скопируйте
+его в `data/plugins/breakc0re__dsh-yandex-music.yml` своего форка и откройте PR:
 
-```markdown
-- [breakc0re/dsh-yandex-music](https://github.com/breakc0re/dsh-yandex-music) - Yandex Music player in the DSH sidebar: search, draggable queue, playlists, My Wave stations, karaoke lyrics with a Russian translation, media keys, and playback that survives a restart. Requires a Yandex Plus subscription.
+```yaml
+name: breakc0re/dsh-yandex-music
+url: https://github.com/breakc0re/dsh-yandex-music
+category: ui
+en: Yandex Music player in the DSH sidebar: search, a draggable queue, playlists, My Wave stations, lyrics with karaoke timing and a Russian translation, media keys, and playback that survives a restart.
+icon: https://raw.githubusercontent.com/breakc0re/dsh-yandex-music/main/assets/icon-180.png
 ```
 
-Требования списка, которые у плагина уже выполнены: манифест `dsh.bundle`,
-установка через `dsh plugin add`, работающее описание в одну строку.
+Один файл — вся заявка: README списка генерируются из `data/plugins/*.yml` после
+мержа, править их руками не нужно и не стоит (иначе конфликт с генератором).
 
-После мержа индекса ждать до суток; jsDelivr кэширует до 12 часов, свежая
-копия — `https://realguan.github.io/dsh-plugin-market/dsh-index.json`.
+Проверки, которые CI прогоняет до человека:
+
+- в `package.json` есть манифест `dsh.bundle` — у нас есть;
+- у репозитория есть тема `dsh-plugin` — добавлена;
+- файл лежит по правильному пути и YAML разбирается;
+- README списка пересобирается без конфликтов;
+- репозиторий не «однодневка» (проверяется возраст).
+
+Дальше ждать: мерж → пересборка индекса в 03:17 UTC → в маркете появится
+карточка. jsDelivr кэширует до 12 часов, свежая копия индекса —
+`https://realguan.github.io/dsh-plugin-market/dsh-index.json`.
 
 ## 4. Проверка после публикации
 
