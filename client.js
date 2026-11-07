@@ -11,8 +11,8 @@ window.__ModuleLoader__.load({
     /** Marks the injected stylesheet so a reload replaces it instead of stacking. */
     const STYLE_ID = 'yandex-music';
     /** Popover geometry: a square card anchored above the footer row. */
-    const CARD_WIDTH = 481;
-    const CARD_HEIGHT = 481;
+    const CARD_WIDTH = 553;
+    const CARD_HEIGHT = 553;
     /** Host routes owned by this plugin. */
     const API = '/api/plugins/yandex-music';
     /**
@@ -312,7 +312,7 @@ window.__ModuleLoader__.load({
 [data-slot="sidebar.footer.action"] .aav-footerBtn{display:none !important}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:481px;height:481px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:rgba(18,18,21,.82);backdrop-filter:blur(6px)}
+.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:553px;height:553px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:rgba(18,18,21,.82);backdrop-filter:blur(6px)}
 
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 2px;flex:none}
@@ -393,6 +393,7 @@ window.__ModuleLoader__.load({
 .ym-sticky-bar{position:sticky;top:var(--ym-tabs-h,38px);z-index:5;margin:0 -12px 0;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-section{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dsw-alias-label-secondary);margin:6px 0 -2px}
 .ym-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 4px;margin:0 -2px;scrollbar-width:thin}
+.ym-strip-wrap{flex-wrap:wrap;overflow:visible;margin:0;padding:2px 0 2px}
 .ym-chip{flex:none;width:72px;display:flex;flex-direction:column;gap:4px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-chip-cover{display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));transition:transform .14s ease,filter .14s ease}
 .ym-chip-cover[data-round="true"]{border-radius:50%}
@@ -435,7 +436,7 @@ window.__ModuleLoader__.load({
 .ym-volume-slot{width:22px;height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ym-volume-vert{flex:none;width:96px;height:18px;margin:0;transform:rotate(-90deg);accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-volume-value{font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
-.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:481px;height:481px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 18px 44px rgba(0,0,0,.6);color:#fff;font-size:13px;overflow:hidden;background:rgba(10,10,13,.72)}
+.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:553px;height:553px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 18px 44px rgba(0,0,0,.6);color:#fff;font-size:13px;overflow:hidden;background:rgba(10,10,13,.72)}
 .ym-lyrics-bg{position:absolute;inset:-10%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(9px) saturate(1.05);opacity:.5;pointer-events:none;transform:scale(1.06)}
 .ym-lyrics-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,8,10,.62) 0%,rgba(8,8,10,.74) 55%,rgba(8,8,10,.87) 100%)}
 .ym-lyrics-card > :not(.ym-lyrics-bg):not(.ym-lyrics-scrim){position:relative;z-index:1}
@@ -1974,7 +1975,7 @@ window.__ModuleLoader__.load({
         { kind: 'mood', title: t('waveMood') },
         { kind: 'activity', title: t('waveActivity') },
         { kind: 'epoch', title: t('waveEpoch') },
-        { kind: 'genre', title: t('waveGenre'), limit: 40 },
+        { kind: 'genre', title: t('waveGenre'), limit: 24 },
         { kind: 'personal', title: t('wavePersonal') },
         { kind: 'local-language', title: t('waveLanguage') },
       ]
@@ -2022,7 +2023,7 @@ window.__ModuleLoader__.load({
         catalog.loading && groups.length === 0 ? h(SkeletonRows, { count: 4 }) : null,
         groups.map((group) => h('div', { key: group.kind },
           h('p', { className: 'ym-section' }, group.title),
-          h('div', { className: 'ym-strip' }, chips(group.stations)))),
+          h('div', { className: 'ym-strip ym-strip-wrap' }, chips(group.stations)))),
         h('p', { className: 'ym-section' }, t('waveByArtist')),
         h('input', {
           className: 'ym-input ym-search',
