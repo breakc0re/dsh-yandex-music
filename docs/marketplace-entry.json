@@ -1,0 +1,38 @@
+{
+  "name": "dsh-yandex-music",
+  "title": "Яндекс.Музыка",
+  "description": {
+    "en": "Yandex Music inside the DSH sidebar: search, queue with drag and drop, playlists, My Wave stations, lyrics with karaoke timing and a Russian translation, media keys and progress that survives a restart. Needs a Yandex account and a Plus subscription.",
+    "zh": "在 DSH 侧边栏里使用 Яндекс.Музыка：搜索、可拖拽的播放队列、播放列表、电台「我的波」、带卡拉 OK 时间轴与俄语翻译的歌词、媒体按键，以及重启后保留播放进度。需要 Яндекс 账号与 Plus 订阅。",
+    "ru": "Яндекс.Музыка в боковой панели DSH: поиск, очередь с перетаскиванием, плейлисты, станции «Моей волны», текст песни с караоке и переводом на русский, медиаклавиши и запоминание места воспроизведения. Нужны аккаунт Яндекса и подписка Плюс."
+  },
+  "author": "breakc0re",
+  "homepage": "https://github.com/breakc0re/dsh-yandex-music",
+  "repository": {
+    "url": "https://github.com/breakc0re/dsh-yandex-music"
+  },
+  "metadata": {
+    "category": "ui",
+    "keywords": [
+      "dsh",
+      "dsh-plugin",
+      "deepseek-harness",
+      "cordis",
+      "yandex-music",
+      "music",
+      "player",
+      "lyrics"
+    ],
+    "labels": ["network", "fs-read", "fs-write", "env"]
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/breakc0re/dsh-yandex-music",
+        "commit": "REPLACE_WITH_RELEASE_COMMIT"
+      }
+    }
+  ]
+}

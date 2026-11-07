@@ -36,7 +36,6 @@ window.__ModuleLoader__.load({
       title: 'Яндекс.Музыка',
       close: 'Закрыть',
       loading: 'Проверяем вход…',
-      setupTitle: 'Подключение приложения',
       setupHint: 'Создайте приложение на oauth.yandex.ru с Redirect URI https://oauth.yandex.ru/verification_code и вставьте его client_id. Секрет не нужен: вход идёт через PKCE.',
       setupLink: 'Открыть oauth.yandex.ru',
       clientId: 'client_id',
@@ -45,21 +44,12 @@ window.__ModuleLoader__.load({
       musicClientHint: 'Официальный клиент Музыки: с его токеном Яндекс отдаёт Плюс и полные треки. Чужое приложение — на свой риск.',
       save: 'Сохранить',
       saving: 'Сохраняем…',
-      loginTitle: 'Вход в Яндекс',
-      loginHint: 'Откройте страницу и разрешите доступ. Если Яндекс показал 7-значный код — введите его. Если вас перебросило на ваш Redirect URI, скопируйте значение параметра code из адресной строки.',
-      login: 'Войти в Яндекс',
-      openPage: 'Открыть страницу входа',
-      code: 'Код подтверждения или code из адресной строки',
-      submit: 'Подтвердить',
-      submitting: 'Проверяем код…',
       signedIn: 'Вы вошли как',
       account: 'Аккаунт',
-      noPlus: 'Без Яндекс Плюса доступны только 30-секундные превью.',
       logout: 'Выйти',
       searchPlaceholder: 'Найти трек или исполнителя',
       searching: 'Ищем…',
       nothingFound: 'Ничего не нашлось',
-      searchFailed: 'Поиск не удался',
       play: 'Играть',
       pause: 'Пауза',
       next: 'Следующий',
@@ -70,7 +60,6 @@ window.__ModuleLoader__.load({
       tabSearch: 'Поиск',
       tabWave: 'Моя волна',
       tabPlaylists: 'Плейлисты',
-      tabQueue: 'Очередь',
       tabCurrent: 'Текущий',
       addToPlaylist: 'В плейлист',
       newPlaylistPlaceholder: 'Название нового плейлиста',
@@ -166,7 +155,6 @@ window.__ModuleLoader__.load({
       title: 'Yandex.Music',
       close: 'Close',
       loading: 'Checking sign-in…',
-      setupTitle: 'Connect the application',
       setupHint: 'Create an application at oauth.yandex.ru with Redirect URI https://oauth.yandex.ru/verification_code and paste its client_id. No secret is needed: sign-in uses PKCE.',
       setupLink: 'Open oauth.yandex.ru',
       clientId: 'client_id',
@@ -175,21 +163,12 @@ window.__ModuleLoader__.load({
       musicClientHint: "The official Music client: its token gets Plus and full tracks. Someone else's application — use at your own risk.",
       save: 'Save',
       saving: 'Saving…',
-      loginTitle: 'Sign in to Yandex',
-      loginHint: 'Open the page and allow access. If Yandex shows a 7-digit code, enter it. If you were redirected to your own Redirect URI, copy the code parameter from the address bar.',
-      login: 'Sign in to Yandex',
-      openPage: 'Open the sign-in page',
-      code: 'Confirmation code or code from the address bar',
-      submit: 'Confirm',
-      submitting: 'Checking the code…',
       signedIn: 'Signed in as',
       account: 'Account',
-      noPlus: 'Without Yandex Plus only 30-second previews are available.',
       logout: 'Sign out',
       searchPlaceholder: 'Find a track or artist',
       searching: 'Searching…',
       nothingFound: 'Nothing found',
-      searchFailed: 'Search failed',
       play: 'Play',
       pause: 'Pause',
       next: 'Next',
@@ -200,7 +179,6 @@ window.__ModuleLoader__.load({
       tabSearch: 'Search',
       tabWave: 'My Wave',
       tabPlaylists: 'Playlists',
-      tabQueue: 'Queue',
       tabCurrent: 'Current',
       addToPlaylist: 'Add to playlist',
       newPlaylistPlaceholder: 'New playlist name',
@@ -380,15 +358,20 @@ window.__ModuleLoader__.load({
 .ym-add-title{font-size:12px;font-weight:600}
 .ym-add-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px}
 .ym-add-create{display:flex;gap:6px;align-items:center}
-.ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;position:sticky;top:var(--ym-tabs-h,38px);z-index:5;margin:0 -12px 0;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-add-create .ym-input{flex:1;min-width:0}
+.ym-queue-head{display:flex;align-items:center;gap:4px;position:sticky;top:var(--ym-tabs-h,38px);z-index:5;margin:0 -12px 0;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-queue-row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:8px;border:1px dashed transparent}
-.ym-queue-row{transition:background .12s ease,border-color .12s ease}.ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-queue-row{transition:background .12s ease,border-color .12s ease}
+.ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-queue-row[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
 .ym-queue-row[data-over="true"]{border-color:var(--dsw-alias-border-accent,#3b6fe0)}
 .ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
-.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;height:38px;box-sizing:border-box;flex:none;position:sticky;top:0;z-index:6;margin:0 -12px 0;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
+.ym-tabs{display:flex;gap:4px;height:38px;box-sizing:border-box;flex:none;position:sticky;top:0;z-index:6;margin:0 -12px 0;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-tab{font-size:11px}
+.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1 1 0;min-width:0;padding:6px 6px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045);color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease,transform .1s ease}
 .ym-tab:hover{background:rgba(255,255,255,.1);color:var(--dsw-alias-label-primary);border-color:rgba(255,255,255,.16)}
 .ym-tab:active{transform:scale(.97)}
@@ -402,7 +385,8 @@ window.__ModuleLoader__.load({
 .ym-search-status[data-error="true"]{color:var(--dsw-alias-label-danger,#ff6b6b)}
 .ym-results{display:flex;flex-direction:column;gap:1px;margin:8px -4px 0;padding:0 4px}
 .ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
-.ym-result{transition:background .12s ease}.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-result{transition:background .12s ease}
+.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-result[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
 .ym-result[data-over="true"]{box-shadow:inset 0 0 0 1px var(--dsw-alias-border-accent,#3b6fe0)}
 .ym-result-cover{flex:none;width:32px;height:32px;border-radius:6px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
@@ -424,7 +408,8 @@ window.__ModuleLoader__.load({
 .ym-chip{flex:none;width:72px;display:flex;flex-direction:column;gap:4px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-chip-cover{display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));transition:transform .14s ease,filter .14s ease}
 .ym-chip-cover[data-round="true"]{border-radius:50%}
-.ym-chip{transition:transform .12s ease}.ym-chip:hover .ym-chip-cover{filter:brightness(1.15);transform:scale(1.03)}
+.ym-chip{transition:transform .12s ease}
+.ym-chip:hover .ym-chip-cover{filter:brightness(1.15);transform:scale(1.03)}
 .ym-chip-title{font-size:11px;line-height:1.25;max-height:2.5em;overflow:hidden;overflow-wrap:anywhere}
 .ym-cover-button{flex:none;display:inline-flex;padding:0;border:0;border-radius:6px;background:transparent;cursor:pointer}
 .ym-cover-button:hover{filter:brightness(1.15)}
@@ -445,7 +430,9 @@ window.__ModuleLoader__.load({
 .ym-controls{display:flex;align-items:center;gap:4px}
 .ym-controls .ym-icon-button{width:34px;height:34px}
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
-.ym-icon-button{transition:background .12s ease,color .12s ease,transform .1s ease}.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}.ym-icon-button:active{transform:scale(.94)}
+.ym-icon-button{transition:background .12s ease,color .12s ease,transform .1s ease}
+.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-icon-button:active{transform:scale(.94)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-icon-button:disabled{cursor:default}
 .ym-spinner{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:ym-spin .7s linear infinite}
@@ -1255,28 +1242,6 @@ window.__ModuleLoader__.load({
       prefetch.trackId = '';
       prefetch.url = '';
       return value;
-    }
-
-    /**
-     * Only one thing may play at a time.
-     *
-     * A reloaded bundle revision can leave a previous `<audio>` alive outside
-     * this module's reach, and setting `src` on our own element does not stop
-     * it. Everything we do not own is paused and unloaded before a new track
-     * starts, so two revisions can never sing over each other.
-     */
-    function silenceOthers(own) {
-      if (typeof document === 'undefined') return;
-      try {
-        for (const element of document.querySelectorAll('audio')) {
-          if (element === own) continue;
-          element.pause();
-          element.removeAttribute('src');
-          element.load();
-        }
-      } catch {
-        /* a hostile DOM must never break playback */
-      }
     }
 
     async function playAt(index, startAt = 0) {

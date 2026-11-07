@@ -1,8 +1,7 @@
 {
   "name": "dsh-yandex-music",
   "version": "1.0.0",
-  "private": true,
-  "description": "Yandex Music player in the DSH sidebar footer",
+  "description": "Яндекс.Музыка в боковой панели DSH: поиск, очередь, плейлисты, «Моя волна» и текст песни с караоке.",
   "type": "module",
   "main": "server.js",
   "exports": {
@@ -14,8 +13,34 @@
     "lib/*.js",
     "client.js",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "deepseek-harness",
+    "cordis",
+    "yandex-music",
+    "music",
+    "player",
+    "lyrics"
+  ],
+  "license": "MIT",
+  "author": "breakc0re",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/breakc0re/dsh-yandex-music.git"
+  },
+  "homepage": "https://github.com/breakc0re/dsh-yandex-music#readme",
+  "bugs": {
+    "url": "https://github.com/breakc0re/dsh-yandex-music/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
