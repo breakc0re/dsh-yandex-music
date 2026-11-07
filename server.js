@@ -290,6 +290,9 @@ export function apply(ctx) {
       const auth = await freshAuth();
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
       const result = await resolveTrackUrl(auth.accessToken, trackId, albumId);
+      if (result.error === 'no-rights') {
+        return fail(response, 409, 'no-rights', 'этот трек недоступен для прослушивания на аккаунте');
+      }
       if (result.error !== undefined) return fail(response, 502, result.error, 'track is not playable');
       return sendJson(response, 200, { ok: true, value: result });
     },
