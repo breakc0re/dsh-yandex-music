@@ -69,9 +69,10 @@ window.__ModuleLoader__.load({
       queueEmpty: 'Очередь пуста',
       nowPlaying: 'Сейчас играет',
       tabSearch: 'Поиск',
-      tabWave: 'Волна',
+      tabWave: 'Моя волна',
       tabPlaylists: 'Плейлисты',
       tabQueue: 'Очередь',
+      tabCurrent: 'Текущий',
       addToPlaylist: 'В плейлист',
       newPlaylistPlaceholder: 'Название нового плейлиста',
       createPlaylist: 'Создать',
@@ -191,6 +192,7 @@ window.__ModuleLoader__.load({
       tabWave: 'My Wave',
       tabPlaylists: 'Playlists',
       tabQueue: 'Queue',
+      tabCurrent: 'Current',
       addToPlaylist: 'Add to playlist',
       newPlaylistPlaceholder: 'New playlist name',
       createPlaylist: 'Create',
@@ -341,21 +343,22 @@ window.__ModuleLoader__.load({
 .ym-add-create{display:flex;gap:6px;align-items:center}
 .ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px -8px;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-queue-row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:8px;border:1px dashed transparent}
-.ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-queue-row{transition:background .12s ease,border-color .12s ease}.ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-queue-row[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
 .ym-queue-row[data-over="true"]{border-color:var(--dsw-alias-border-accent,#3b6fe0)}
 .ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
 .ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
-.ym-tab{flex:1;min-width:0;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
+.ym-tab{flex:1 1 0;min-width:0;padding:6px 6px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045);color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease,transform .1s ease}
+.ym-tab:hover{background:rgba(255,255,255,.1);color:var(--dsw-alias-label-primary);border-color:rgba(255,255,255,.16)}
+.ym-tab:active{transform:scale(.97)}
+.ym-tab[data-active="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);border-color:transparent;color:#fff;box-shadow:0 2px 10px rgba(59,111,224,.32)}
 .ym-device-code{font-size:20px;letter-spacing:.22em;font-weight:600;text-align:center;padding:10px;border-radius:8px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-variant-numeric:tabular-nums}
 .ym-search{width:100%}
 .ym-results{display:flex;flex-direction:column;gap:1px;margin:8px -4px 0;padding:0 4px}
 .ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
-.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-result{transition:background .12s ease}.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-result[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
 .ym-result-cover{flex:none;width:32px;height:32px;border-radius:6px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
 .ym-result-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-size:14px}
@@ -371,9 +374,9 @@ window.__ModuleLoader__.load({
 .ym-section{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dsw-alias-label-secondary);margin:6px 0 -2px}
 .ym-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 4px;margin:0 -2px;scrollbar-width:thin}
 .ym-chip{flex:none;width:72px;display:flex;flex-direction:column;gap:4px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.ym-chip-cover{display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
+.ym-chip-cover{display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));transition:transform .14s ease,filter .14s ease}
 .ym-chip-cover[data-round="true"]{border-radius:50%}
-.ym-chip:hover .ym-chip-cover{filter:brightness(1.15)}
+.ym-chip{transition:transform .12s ease}.ym-chip:hover .ym-chip-cover{filter:brightness(1.15);transform:scale(1.03)}
 .ym-chip-title{font-size:11px;line-height:1.25;max-height:2.5em;overflow:hidden;overflow-wrap:anywhere}
 .ym-cover-button{flex:none;display:inline-flex;padding:0;border:0;border-radius:6px;background:transparent;cursor:pointer}
 .ym-cover-button:hover{filter:brightness(1.15)}
@@ -393,7 +396,7 @@ window.__ModuleLoader__.load({
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
 .ym-controls{display:flex;align-items:center;gap:4px}
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
-.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-icon-button{transition:background .12s ease,color .12s ease,transform .1s ease}.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}.ym-icon-button:active{transform:scale(.94)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-seek{flex:1 1 auto;min-width:0;max-width:190px;height:11px;margin:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 3px}
@@ -1051,6 +1054,19 @@ window.__ModuleLoader__.load({
       waveSession.active = false;
       player.queue = tracks.slice();
       void playAt(index);
+    }
+
+    /** Fill the queue without starting playback — the default of «Текущий». */
+    function loadQueue(tracks) {
+      if (!Array.isArray(tracks) || tracks.length === 0) return;
+      waveSession.active = false;
+      player.queue = tracks.slice();
+      player.index = -1;
+      player.current = null;
+      player.playing = false;
+      player.position = 0;
+      player.duration = 0;
+      emit();
     }
 
     /* ------------------------------------------------------------------ */
@@ -1770,7 +1786,32 @@ window.__ModuleLoader__.load({
       const state = usePlayer();
       const [dragFrom, setDragFrom] = React.useState(-1);
       const [dragOver, setDragOver] = React.useState(-1);
+      const [origin, setOrigin] = React.useState({ kind: 'queue', total: 0, loading: false });
       const listRef = React.useRef(null);
+
+      /**
+       * An empty queue would make this tab look broken, so it opens with the
+       * liked tracks loaded (nothing is started, the user presses play instead).
+       */
+      React.useEffect(() => {
+        let cancelled = false;
+        if (player.queue.length > 0) return undefined;
+        setOrigin({ kind: 'likes', total: 0, loading: true });
+        (async () => {
+          try {
+            const value = await call('music/playlist', { kind: 3 });
+            const tracks = Array.isArray(value.tracks) ? value.tracks : [];
+            if (cancelled) return;
+            setOrigin({ kind: 'likes', total: tracks.length, loading: false });
+            if (player.queue.length === 0) loadQueue(tracks);
+          } catch {
+            if (!cancelled) setOrigin({ kind: 'queue', total: 0, loading: false });
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }, []);
 
       /** Scroll the popover itself; the sticky toolbar keeps its own position. */
       const scrollPane = (node, top, smooth) => {
@@ -1796,7 +1837,7 @@ window.__ModuleLoader__.load({
         : state.repeat === 'all' ? t('repeatAll') : t('repeatOff');
 
       const header = h('div', { className: 'ym-queue-head' },
-        h('span', { className: 'ym-playlist-title' }, `${t('tabQueue')} · ${state.queue.length}`),
+        h('span', { className: 'ym-playlist-title' }, `${origin.kind === 'likes' ? t('likedPlaylist') : t('tabCurrent')} \u00b7 ${state.queue.length}`),
         h('button', {
           className: 'ym-mini-button',
           type: 'button',
@@ -1838,7 +1879,8 @@ window.__ModuleLoader__.load({
         }, '\u2715'));
 
       if (state.queue.length === 0) {
-        return h('div', { className: 'ym-form' }, header, h('p', { className: 'ym-hint' }, t('queueEmpty')));
+        return h('div', { className: 'ym-form' }, header,
+          h('p', { className: 'ym-hint' }, origin.loading ? t('searching') : t('queueEmpty')));
       }
 
       const rows = state.queue.map((track, index) => h('div', {
@@ -2501,7 +2543,7 @@ window.__ModuleLoader__.load({
       const [tracks, setTracks] = React.useState([]);
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
-      const [tab, setTab] = React.useState('search');
+      const [tab, setTab] = React.useState('current');
       const [path, setPath] = React.useState([]);
       const [groups, setGroups] = React.useState({ artists: [], albums: [] });
       const state = usePlayer();
@@ -2693,37 +2735,27 @@ window.__ModuleLoader__.load({
 
       return h('div', { className: 'ym-form', ref: rootRef, style: { '--ym-tabs-h': `${tabsHeight}px` } },
         h('div', { className: 'ym-tabs', ref: tabsRef },
-          h('button', {
+          ...[
+            {
+              id: 'current',
+              label: state.queue.length > 0 ? `${t('tabCurrent')} \u00b7 ${state.queue.length}` : t('tabCurrent'),
+            },
+            { id: 'playlists', label: t('tabPlaylists') },
+            { id: 'wave', label: t('tabWave') },
+            { id: 'search', label: t('tabSearch') },
+          ].map((item) => h('button', {
+            key: item.id,
             className: 'ym-tab',
             type: 'button',
-            'data-active': tab === 'search' ? 'true' : 'false',
-            onClick: () => setTab('search'),
-          }, t('tabSearch')),
-          h('button', {
-            className: 'ym-tab',
-            type: 'button',
-            'data-active': tab === 'playlists' ? 'true' : 'false',
-            onClick: () => setTab('playlists'),
-          }, t('tabPlaylists')),
-          h('button', {
-            className: 'ym-tab',
-            type: 'button',
-            'data-active': tab === 'wave' ? 'true' : 'false',
-            onClick: () => setTab('wave'),
-          }, t('tabWave')),
-          h('button', {
-            className: 'ym-tab',
-            type: 'button',
-            'data-active': tab === 'queue' ? 'true' : 'false',
-            onClick: () => setTab('queue'),
-          }, state.queue.length > 0 ? `${t('tabQueue')} \u00b7 ${state.queue.length}` : t('tabQueue'))),
+            'data-active': tab === item.id ? 'true' : 'false',
+            onClick: () => setTab(item.id),
+          }, item.label))),
         tab === 'wave'
           ? h(WavePane, { t })
           : tab === 'playlists'
             ? h(PlaylistsPane, { t })
-            : tab === 'queue'
-              ? h(QueuePane, { t })
-              : path.length > 0
+            : tab === 'search'
+              ? path.length > 0
                 ? h(DetailPane, {
                   t,
                   entry: path[path.length - 1],
@@ -2732,7 +2764,8 @@ window.__ModuleLoader__.load({
                   onOpenAlbum: openAlbum,
                   onAdded: notify,
                 })
-                : searchPane);
+                : searchPane
+              : h(QueuePane, { t }));
     }
 
     /** Auth state machine for the popover body. */
