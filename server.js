@@ -18,7 +18,7 @@ import { MUSIC_CLIENT_ID, MUSIC_CLIENT_SECRET, pollDeviceToken, requestDeviceCod
 import { addTrackToPlaylist, createPlaylist, listPlaylists, readPlaylist, setTrackLike } from './lib/playlists.js';
 import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
-import { readAccount, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
+import { readAccount, readAlbum, readArtist, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
@@ -215,6 +215,28 @@ export function apply(ctx) {
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
       const result = await searchTracks(auth.accessToken, query);
       if (result === null) return fail(response, 502, 'upstream', 'music search failed');
+      return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/artist': async (request, response) => {
+      if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const id = text(new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('id') ?? '', 32);
+      if (!/^\d+$/u.test(id)) return fail(response, 400, 'id', 'artist id is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await readArtist(auth.accessToken, id);
+      if (result === null) return fail(response, 502, 'upstream', 'artist is unavailable');
+      return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/album': async (request, response) => {
+      if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const id = text(new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('id') ?? '', 32);
+      if (!/^\d+$/u.test(id)) return fail(response, 400, 'id', 'album id is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await readAlbum(auth.accessToken, id);
+      if (result === null) return fail(response, 502, 'upstream', 'album is unavailable');
       return sendJson(response, 200, { ok: true, value: result });
     },
 

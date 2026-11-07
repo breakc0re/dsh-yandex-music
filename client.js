@@ -91,6 +91,13 @@ window.__ModuleLoader__.load({
       addedAll: 'Вся выдача в очереди',
       jumpToCurrent: 'К текущему треку',
       scrollTop: 'Наверх',
+      artistsSection: 'Исполнители',
+      albumsSection: 'Альбомы',
+      tracksSection: 'Треки',
+      tracksCount: 'треков',
+      allTracks: 'Всего треков',
+      openAlbum: 'Открыть альбом',
+      openArtist: 'Открыть исполнителя',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -167,6 +174,13 @@ window.__ModuleLoader__.load({
       addedAll: 'Every result is queued',
       jumpToCurrent: 'Jump to the current track',
       scrollTop: 'Back to top',
+      artistsSection: 'Artists',
+      albumsSection: 'Albums',
+      tracksSection: 'Tracks',
+      tracksCount: 'tracks',
+      allTracks: 'Total tracks',
+      openAlbum: 'Open the album',
+      openArtist: 'Open the artist',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -253,7 +267,7 @@ window.__ModuleLoader__.load({
 .ym-add-title{font-size:12px;font-weight:600}
 .ym-add-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px}
 .ym-add-create{display:flex;gap:6px;align-items:center}
-.ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px;padding:5px 12px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px -8px;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-queue-row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:8px;border:1px dashed transparent}
 .ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-queue-row[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
@@ -261,7 +275,7 @@ window.__ModuleLoader__.load({
 .ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
-.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px 2px;padding:3px 12px 6px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:3px 12px 8px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
 .ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
@@ -281,7 +295,20 @@ window.__ModuleLoader__.load({
 .ym-result-actions .ym-mini-button{width:22px;height:22px}
 .ym-result:hover .ym-result-actions,.ym-result[data-active="true"] .ym-result-actions{opacity:1}
 .ym-results-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:4px 0 -2px}
-.ym-sticky-bar{position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px;padding:5px 12px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-sticky-bar{position:sticky;top:var(--ym-tabs-h,35px);z-index:5;margin:0 -12px -8px;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-section{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dsw-alias-label-secondary);margin:6px 0 -2px}
+.ym-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 4px;margin:0 -2px;scrollbar-width:thin}
+.ym-chip{flex:none;width:72px;display:flex;flex-direction:column;gap:4px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ym-chip-cover{display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
+.ym-chip-cover[data-round="true"]{border-radius:50%}
+.ym-chip:hover .ym-chip-cover{filter:brightness(1.15)}
+.ym-chip-title{font-size:11px;line-height:1.25;max-height:2.5em;overflow:hidden;overflow-wrap:anywhere}
+.ym-cover-button{flex:none;display:inline-flex;padding:0;border:0;border-radius:6px;background:transparent;cursor:pointer}
+.ym-cover-button:hover{filter:brightness(1.15)}
+.ym-link-button{padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;max-width:100%}
+.ym-link-button:hover{color:var(--dsw-alias-label-accent,#7aa7ff);text-decoration:underline}
+.ym-result-sub.ym-link-button{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.ym-index{flex:none;width:16px;text-align:right;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1525,6 +1552,175 @@ window.__ModuleLoader__.load({
           : null);
     }
 
+    /** The «в очередь / следом» pair that every track list offers. */
+    function RowActions({ t, track, onAdded }) {
+      const announce = (message) => {
+        if (typeof onAdded === 'function') onAdded(message);
+      };
+      return h('span', { className: 'ym-result-actions' },
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          title: t('addToQueue'),
+          'aria-label': t('addToQueue'),
+          onClick: (event) => {
+            event.stopPropagation();
+            addToQueue(track);
+            announce(t('addedToQueue'));
+          },
+        }, '+'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          title: t('playNext'),
+          'aria-label': t('playNext'),
+          onClick: (event) => {
+            event.stopPropagation();
+            playNextInQueue(track);
+            announce(t('playNext'));
+          },
+        }, '\u21b3'));
+    }
+
+    /**
+     * An artist or an album opened from a search result. Both pages end in a
+     * track list, which is what the user actually came for.
+     */
+    function DetailPane({ t, entry, onBack, onOpenArtist, onOpenAlbum, onAdded }) {
+      const state = usePlayer();
+      const [data, setData] = React.useState({ loading: true, error: '', artist: null, album: null, albums: [], tracks: [], total: 0 });
+
+      React.useEffect(() => {
+        let cancelled = false;
+        setData({ loading: true, error: '', artist: null, album: null, albums: [], tracks: [], total: 0 });
+        (async () => {
+          try {
+            const value = entry.kind === 'artist'
+              ? await call(`music/artist?id=${encodeURIComponent(entry.id)}`)
+              : await call(`music/album?id=${encodeURIComponent(entry.id)}`);
+            if (cancelled) return;
+            setData({
+              loading: false,
+              error: '',
+              artist: value.artist === undefined ? null : value.artist,
+              album: value.album === undefined ? null : value.album,
+              albums: Array.isArray(value.albums) ? value.albums : [],
+              tracks: Array.isArray(value.tracks) ? value.tracks : [],
+              total: typeof value.total === 'number' ? value.total : 0,
+            });
+          } catch (failure) {
+            if (!cancelled) {
+              setData({ loading: false, error: failure.message || 'page failed', artist: null, album: null, albums: [], tracks: [], total: 0 });
+            }
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }, [entry.kind, entry.id]);
+
+      const title = entry.kind === 'artist'
+        ? (data.artist !== null && data.artist.name !== '' ? data.artist.name : entry.title)
+        : (data.album !== null && data.album.title !== '' ? data.album.title : entry.title);
+
+      const bar = h('div', { className: 'ym-row ym-sticky-bar' },
+        h('button', {
+          className: 'ym-icon-button',
+          type: 'button',
+          'aria-label': t('back'),
+          title: t('back'),
+          onClick: onBack,
+        }, '\u2190'),
+        h('span', { className: 'ym-playlist-title' }, title),
+        h('button', {
+          className: 'ym-icon-button',
+          type: 'button',
+          'aria-label': t('addAllToQueue'),
+          title: t('addAllToQueue'),
+          disabled: data.tracks.length === 0,
+          onClick: () => {
+            addToQueue(data.tracks);
+            if (typeof onAdded === 'function') onAdded(t('addedAll'));
+          },
+        }, '+'));
+
+      const chips = data.albums.map((album) => h('button', {
+        key: `al${album.id}`,
+        className: 'ym-chip',
+        type: 'button',
+        title: `${album.title}${album.year === null ? '' : ` · ${album.year}`}`,
+        onClick: () => onOpenAlbum(album.id, album.title),
+      },
+      album.cover !== null
+        ? h('img', { className: 'ym-chip-cover', src: album.cover, alt: '', loading: 'lazy' })
+        : h('span', { className: 'ym-chip-cover' }),
+      h('span', { className: 'ym-chip-title' }, album.title)));
+
+      const rows = data.tracks.map((track, index) => h('div', {
+        key: `${track.id}-${index}`,
+        className: 'ym-result',
+        role: 'button',
+        tabIndex: 0,
+        'data-active': state.current !== null && String(state.current.id) === String(track.id) ? 'true' : 'false',
+        onClick: () => playQueue(data.tracks, index),
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            playQueue(data.tracks, index);
+          }
+        },
+      },
+      entry.kind === 'album'
+        ? h('span', { className: 'ym-index' }, String(index + 1))
+        : track.cover !== null
+          ? h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' })
+          : h('span', { className: 'ym-result-cover' }),
+      h('span', { className: 'ym-result-text' },
+        h('span', { className: 'ym-result-title' }, track.title),
+        entry.kind === 'artist' && track.albumId !== null && track.albumTitle !== ''
+          ? h('button', {
+            className: 'ym-link-button ym-result-sub',
+            type: 'button',
+            title: t('openAlbum'),
+            onClick: (event) => {
+              event.stopPropagation();
+              onOpenAlbum(track.albumId, track.albumTitle);
+            },
+          }, track.albumTitle)
+          : h('span', { className: 'ym-result-sub' }, track.artists)),
+      h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs)),
+      h(RowActions, { t, track, onAdded })));
+
+      const meta = entry.kind === 'album' && data.album !== null
+        ? h('p', { className: 'ym-hint' },
+          data.album.artistId === null || data.album.artistId === undefined
+            ? h('span', null, data.album.artists)
+            : h('button', {
+              className: 'ym-link-button',
+              type: 'button',
+              title: t('openArtist'),
+              onClick: () => onOpenArtist(data.album.artistId, data.album.artists),
+            }, data.album.artists),
+          ` \u00b7 ${data.album.year === null ? '' : `${data.album.year} \u00b7 `}${data.album.trackCount} ${t('tracksCount')}`)
+        : null;
+
+      return h('div', { className: 'ym-form' },
+        bar,
+        data.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        data.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, data.error) : null,
+        meta,
+        chips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
+        chips.length > 0 ? h('div', { className: 'ym-strip' }, chips) : null,
+        rows.length > 0 ? h('p', { className: 'ym-section' }, t('tracksSection')) : null,
+        rows.length > 0 ? h('div', { className: 'ym-results' }, rows) : null,
+        !data.loading && data.error === '' && rows.length === 0
+          ? h('p', { className: 'ym-hint' }, t('nothingFound'))
+          : null,
+        entry.kind === 'artist' && data.total > data.tracks.length
+          ? h('p', { className: 'ym-hint' }, `${t('allTracks')}: ${data.total}`)
+          : null);
+    }
+
     /** Search field, result rows, and the transport for whatever is playing. */
     function SearchScreen({ t, status }) {
       const [query, setQuery] = React.useState('');
@@ -1532,6 +1728,8 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
       const [tab, setTab] = React.useState('search');
+      const [path, setPath] = React.useState([]);
+      const [groups, setGroups] = React.useState({ artists: [], albums: [] });
       const [wave, setWave] = React.useState({ busy: false, error: '' });
       const state = usePlayer();
       const tabsRef = React.useRef(null);
@@ -1559,6 +1757,19 @@ window.__ModuleLoader__.load({
         flashTimer.current = window.setTimeout(() => setFlash(''), 2000);
       };
 
+      /** Drill-down stack: search → artist → album, and back down again. */
+      const openArtist = (id, title) => {
+        if (id === null || id === undefined) return;
+        setPath((previous) => previous.concat([{ kind: 'artist', id: String(id), title: title ?? '' }]));
+      };
+
+      const openAlbum = (id, title) => {
+        if (id === null || id === undefined) return;
+        setPath((previous) => previous.concat([{ kind: 'album', id: String(id), title: title ?? '' }]));
+      };
+
+      const goBack = () => setPath((previous) => previous.slice(0, -1));
+
       const startWaveClick = async () => {
         setWave({ busy: true, error: '' });
         try {
@@ -1573,6 +1784,7 @@ window.__ModuleLoader__.load({
         const trimmed = query.trim();
         if (trimmed === '') {
           setTracks([]);
+          setGroups({ artists: [], albums: [] });
           setError('');
           setBusy(false);
           return undefined;
@@ -1584,10 +1796,15 @@ window.__ModuleLoader__.load({
             const value = await call(`music/search?q=${encodeURIComponent(trimmed)}`);
             if (cancelled) return;
             setTracks(Array.isArray(value.tracks) ? value.tracks : []);
+            setGroups({
+              artists: Array.isArray(value.artists) ? value.artists : [],
+              albums: Array.isArray(value.albums) ? value.albums : [],
+            });
             setError('');
           } catch (failure) {
             if (cancelled) return;
             setTracks([]);
+            setGroups({ artists: [], albums: [] });
             setError(failure.message || 'search failed');
           } finally {
             if (!cancelled) setBusy(false);
@@ -1604,7 +1821,7 @@ window.__ModuleLoader__.load({
         className: 'ym-result',
         role: 'button',
         tabIndex: 0,
-        'data-active': state.current !== null && state.current.id === track.id ? 'true' : 'false',
+        'data-active': state.current !== null && String(state.current.id) === String(track.id) ? 'true' : 'false',
         onClick: () => playQueue(tracks, index),
         onKeyDown: (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -1614,35 +1831,57 @@ window.__ModuleLoader__.load({
         },
       },
       track.cover !== null
-        ? h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' })
+        ? h('button', {
+          className: 'ym-cover-button',
+          type: 'button',
+          title: track.albumTitle !== '' ? `${t('openAlbum')}: ${track.albumTitle}` : t('openAlbum'),
+          'aria-label': t('openAlbum'),
+          disabled: track.albumId === null,
+          onClick: (event) => {
+            event.stopPropagation();
+            openAlbum(track.albumId, track.albumTitle);
+          },
+        }, h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' }))
         : h('span', { className: 'ym-result-cover' }),
       h('span', { className: 'ym-result-text' },
         h('span', { className: 'ym-result-title' }, track.title),
-        h('span', { className: 'ym-result-sub' }, track.artists)),
+        track.artistId !== null
+          ? h('button', {
+            className: 'ym-link-button ym-result-sub',
+            type: 'button',
+            title: track.artists === '' ? t('openArtist') : `${t('openArtist')}: ${track.artists}`,
+            onClick: (event) => {
+              event.stopPropagation();
+              openArtist(track.artistId, track.artists);
+            },
+          }, track.artists === '' ? t('openArtist') : track.artists)
+          : h('span', { className: 'ym-result-sub' }, track.artists)),
       h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs)),
-      h('span', { className: 'ym-result-actions' },
-        h('button', {
-          className: 'ym-mini-button',
-          type: 'button',
-          title: t('addToQueue'),
-          'aria-label': t('addToQueue'),
-          onClick: (event) => {
-            event.stopPropagation();
-            addToQueue(track);
-            notify(t('addedToQueue'));
-          },
-        }, '+'),
-        h('button', {
-          className: 'ym-mini-button',
-          type: 'button',
-          title: t('playNext'),
-          'aria-label': t('playNext'),
-          onClick: (event) => {
-            event.stopPropagation();
-            playNextInQueue(track);
-            notify(t('playNext'));
-          },
-        }, '\u21b3'))));
+      h(RowActions, { t, track, onAdded: notify })));
+
+      const artistChips = groups.artists.map((artist) => h('button', {
+        key: `a${artist.id}`,
+        className: 'ym-chip',
+        type: 'button',
+        title: `${t('openArtist')}: ${artist.name}`,
+        onClick: () => openArtist(artist.id, artist.name),
+      },
+      artist.cover !== null
+        ? h('img', { className: 'ym-chip-cover', src: artist.cover, alt: '', loading: 'lazy', 'data-round': 'true' })
+        : h('span', { className: 'ym-chip-cover', 'data-round': 'true' }),
+      h('span', { className: 'ym-chip-title' }, artist.name)));
+
+      const albumChips = groups.albums.map((album) => h('button', {
+        key: `b${album.id}`,
+        className: 'ym-chip',
+        type: 'button',
+        title: `${t('openAlbum')}: ${album.title}`,
+        onClick: () => openAlbum(album.id, album.title),
+      },
+      album.cover !== null
+        ? h('img', { className: 'ym-chip-cover', src: album.cover, alt: '', loading: 'lazy' })
+        : h('span', { className: 'ym-chip-cover' }),
+      h('span', { className: 'ym-chip-title' }, album.title)));
 
       const searchPane = h('div', { className: 'ym-form' },
         h('input', {
@@ -1659,6 +1898,10 @@ window.__ModuleLoader__.load({
           ? h('p', { className: 'ym-hint' }, t('nothingFound'))
           : null,
         flash !== '' ? h('p', { className: 'ym-hint' }, flash) : null,
+        artistChips.length > 0 ? h('p', { className: 'ym-section' }, t('artistsSection')) : null,
+        artistChips.length > 0 ? h('div', { className: 'ym-strip' }, artistChips) : null,
+        albumChips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
+        albumChips.length > 0 ? h('div', { className: 'ym-strip' }, albumChips) : null,
         tracks.length > 0
           ? h('div', { className: 'ym-results-head' },
             h('span', { className: 'ym-hint' }, `${t('tabSearch')} \u00b7 ${tracks.length}`),
@@ -1716,7 +1959,18 @@ window.__ModuleLoader__.load({
           ? wavePane
           : tab === 'playlists'
             ? h(PlaylistsPane, { t })
-            : tab === 'queue' ? h(QueuePane, { t }) : searchPane);
+            : tab === 'queue'
+              ? h(QueuePane, { t })
+              : path.length > 0
+                ? h(DetailPane, {
+                  t,
+                  entry: path[path.length - 1],
+                  onBack: goBack,
+                  onOpenArtist: openArtist,
+                  onOpenAlbum: openAlbum,
+                  onAdded: notify,
+                })
+                : searchPane);
     }
 
     /** Auth state machine for the popover body. */
