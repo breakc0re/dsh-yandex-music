@@ -334,6 +334,16 @@ window.__ModuleLoader__.load({
 .ym-status{height:17px;margin:0;font-size:12px;line-height:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);opacity:0;transition:opacity .15s ease}
 .ym-status[data-on="true"]{opacity:1}
 .ym-status-error{color:var(--dsw-alias-label-danger,#ff6b6b)}
+/* Only one pane is laid out; the other three keep their state and scroll. */
+.ym-pane{display:none}
+.ym-pane[data-active="true"]{display:block}
+.ym-skeleton-list{display:flex;flex-direction:column;gap:1px;margin:6px -4px 0;padding:0 4px;animation:ym-pulse 1.4s ease-in-out infinite}
+.ym-skeleton{display:flex;align-items:center;gap:8px;padding:5px 6px}
+.ym-skeleton-cover{flex:none;width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,.07)}
+.ym-skeleton-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.ym-skeleton-lines i{display:block;height:8px;border-radius:4px;background:rgba(255,255,255,.07)}
+.ym-skeleton-lines i:last-child{width:45%;background:rgba(255,255,255,.05)}
+@keyframes ym-pulse{0%,100%{opacity:.5}50%{opacity:1}}
 .ym-error{font-size:12px;color:var(--dsw-alias-label-danger,#ff6b6b);margin:0}
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
@@ -352,7 +362,7 @@ window.__ModuleLoader__.load({
 .ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
-.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;height:38px;box-sizing:border-box;flex:none;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1 1 0;min-width:0;padding:6px 6px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045);color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease,transform .1s ease}
 .ym-tab:hover{background:rgba(255,255,255,.1);color:var(--dsw-alias-label-primary);border-color:rgba(255,255,255,.16)}
 .ym-tab:active{transform:scale(.97)}
@@ -504,6 +514,21 @@ window.__ModuleLoader__.load({
         role: failed ? 'alert' : undefined,
         title: message,
       }, message === '' ? '\u00a0' : message);
+    }
+
+    /**
+     * Gray placeholder rows for a list that is still loading. Same height as a
+     * real row, so the moment the data arrives nothing on screen moves.
+     */
+    function SkeletonRows({ count }) {
+      const total = typeof count === 'number' && count > 0 ? count : 6;
+      const rows = [];
+      for (let index = 0; index < total; index += 1) {
+        rows.push(h('div', { key: index, className: 'ym-skeleton' },
+          h('span', { className: 'ym-skeleton-cover' }),
+          h('span', { className: 'ym-skeleton-lines' }, h('i', null), h('i', null))));
+      }
+      return h('div', { className: 'ym-skeleton-list', 'aria-hidden': 'true' }, rows);
     }
 
     /* ------------------------------------------------------------------ */
@@ -864,6 +889,12 @@ window.__ModuleLoader__.load({
       player.lyricsOpen = !player.lyricsOpen;
       emit();
     }
+
+    /**
+     * In-memory cache for the panes. A tab switch must show what it already has
+     * instead of flashing a loader and refetching everything it just had.
+     */
+    const paneCache = { playlists: null, stations: null, likes: null };
 
     /**
      * The last playing track and where it stopped. DSH restarts lose the page,
@@ -1408,9 +1439,9 @@ window.__ModuleLoader__.load({
       const playback = usePlayer();
       const [state, setState] = React.useState({
         view: 'list',
-        loading: true,
+        loading: paneCache.playlists === null,
         error: '',
-        playlists: [],
+        playlists: paneCache.playlists ?? [],
         kind: -1,
         title: '',
         visibility: 'private',
@@ -1427,11 +1458,13 @@ window.__ModuleLoader__.load({
       const loadList = React.useCallback(async () => {
         try {
           const value = await call('music/playlists');
+          const playlists = Array.isArray(value.playlists) ? value.playlists : [];
+          paneCache.playlists = playlists;
           setState((previous) => ({
             ...previous,
             loading: false,
             error: '',
-            playlists: Array.isArray(value.playlists) ? value.playlists : [],
+            playlists,
           }));
         } catch (failure) {
           setState((previous) => ({ ...previous, loading: false, error: failure.message || 'playlists failed' }));
@@ -1673,11 +1706,10 @@ window.__ModuleLoader__.load({
           h(StatusLine, {
             text: state.error !== ''
               ? state.error
-              : state.tracksLoading
-                ? t('searching')
-                : state.message !== '' ? state.message : !state.tracksLoading && rows.length === 0 ? t('playlistEmpty') : '',
+              : state.message !== '' ? state.message : !state.tracksLoading && rows.length === 0 ? t('playlistEmpty') : '',
             error: state.error !== '',
           }),
+          state.tracksLoading && rows.length === 0 ? h(SkeletonRows, { count: 6 }) : null,
           rows.length > 0
             ? h('p', { className: 'ym-section' }, `${t('tracksSection')} \u00b7 ${state.tracks.length}`)
             : null,
@@ -1726,7 +1758,7 @@ window.__ModuleLoader__.load({
             disabled: state.busy || state.newTitle.trim() === '',
             onClick: () => void create(),
           }, t('createPlaylist'))),
-        state.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        state.loading && rows.length === 0 ? h(SkeletonRows, { count: 5 }) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
         state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
         h('div', { className: 'ym-results' }, rows));
@@ -1753,7 +1785,11 @@ window.__ModuleLoader__.load({
      * genres and a wave started from any artist.
      */
     function WavePane({ t }) {
-      const [catalog, setCatalog] = React.useState({ loading: true, error: '', stations: [] });
+      const [catalog, setCatalog] = React.useState({
+        loading: paneCache.stations === null,
+        error: '',
+        stations: paneCache.stations ?? [],
+      });
       const [busy, setBusy] = React.useState('');
       const [error, setError] = React.useState('');
       const [query, setQuery] = React.useState('');
@@ -1766,7 +1802,9 @@ window.__ModuleLoader__.load({
           try {
             const value = await call('music/wave/stations');
             if (cancelled) return;
-            setCatalog({ loading: false, error: '', stations: Array.isArray(value.stations) ? value.stations : [] });
+            const stations = Array.isArray(value.stations) ? value.stations : [];
+            paneCache.stations = stations;
+            setCatalog({ loading: false, error: '', stations });
           } catch (failure) {
             if (!cancelled) setCatalog({ loading: false, error: failure.message || 'stations failed', stations: [] });
           }
@@ -1861,9 +1899,10 @@ window.__ModuleLoader__.load({
           onClick: () => void start('user:onyourwave'),
         }, busy === 'user:onyourwave' ? t('waveLoading') : t('waveStart')),
         h(StatusLine, {
-          text: error !== '' ? error : catalog.error !== '' ? catalog.error : catalog.loading ? t('searching') : '',
+          text: error !== '' ? error : catalog.error,
           error: error !== '' || catalog.error !== '',
         }),
+        catalog.loading && groups.length === 0 ? h(SkeletonRows, { count: 4 }) : null,
         groups.map((group) => h('div', { key: group.kind },
           h('p', { className: 'ym-section' }, group.title),
           h('div', { className: 'ym-strip' }, chips(group.stations)))),
@@ -1908,12 +1947,18 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         let cancelled = false;
         if (player.queue.length > 0) return undefined;
+        if (paneCache.likes !== null) {
+          setOrigin({ kind: 'likes', total: paneCache.likes.length, loading: false });
+          loadQueue(paneCache.likes);
+          return undefined;
+        }
         setOrigin({ kind: 'likes', total: 0, loading: true });
         (async () => {
           try {
             const value = await call('music/playlist', { kind: 3 });
             const tracks = Array.isArray(value.tracks) ? value.tracks : [];
             if (cancelled) return;
+            paneCache.likes = tracks;
             setOrigin({ kind: 'likes', total: tracks.length, loading: false });
             if (player.queue.length === 0) loadQueue(tracks);
           } catch {
@@ -1992,7 +2037,7 @@ window.__ModuleLoader__.load({
 
       if (state.queue.length === 0) {
         return h('div', { className: 'ym-form' }, header,
-          h(StatusLine, { text: origin.loading ? t('searching') : t('queueEmpty') }));
+          origin.loading ? h(SkeletonRows, { count: 5 }) : h(StatusLine, { text: t('queueEmpty') }));
       }
 
       const rows = state.queue.map((track, index) => h('div', {
@@ -2638,13 +2683,10 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'ym-form' },
         bar,
         h(StatusLine, {
-          text: data.error !== ''
-            ? data.error
-            : data.loading
-              ? t('searching')
-              : !data.loading && rows.length === 0 ? t('nothingFound') : '',
+          text: data.error !== '' ? data.error : !data.loading && rows.length === 0 ? t('nothingFound') : '',
           error: data.error !== '',
         }),
+        data.loading && rows.length === 0 ? h(SkeletonRows, { count: 5 }) : null,
         meta,
         chips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
         chips.length > 0 ? h('div', { className: 'ym-strip' }, chips) : null,
@@ -2878,22 +2920,23 @@ window.__ModuleLoader__.load({
             'data-active': tab === item.id ? 'true' : 'false',
             onClick: () => setTab(item.id),
           }, item.label))),
-        tab === 'wave'
-          ? h(WavePane, { t })
-          : tab === 'playlists'
-            ? h(PlaylistsPane, { t })
-            : tab === 'search'
-              ? path.length > 0
-                ? h(DetailPane, {
-                  t,
-                  entry: path[path.length - 1],
-                  onBack: goBack,
-                  onOpenArtist: openArtist,
-                  onOpenAlbum: openAlbum,
-                  onAdded: notify,
-                })
-                : searchPane
-              : h(QueuePane, { t }));
+        h('div', { className: 'ym-pane', 'data-active': tab === 'current' ? 'true' : 'false' },
+          h(QueuePane, { t })),
+        h('div', { className: 'ym-pane', 'data-active': tab === 'playlists' ? 'true' : 'false' },
+          h(PlaylistsPane, { t })),
+        h('div', { className: 'ym-pane', 'data-active': tab === 'wave' ? 'true' : 'false' },
+          h(WavePane, { t })),
+        h('div', { className: 'ym-pane', 'data-active': tab === 'search' ? 'true' : 'false' },
+          path.length > 0
+            ? h(DetailPane, {
+              t,
+              entry: path[path.length - 1],
+              onBack: goBack,
+              onOpenArtist: openArtist,
+              onOpenAlbum: openAlbum,
+              onAdded: notify,
+            })
+            : searchPane));
     }
 
     /** Auth state machine for the popover body. */
