@@ -331,6 +331,9 @@ window.__ModuleLoader__.load({
 .ym-button:disabled{opacity:.55;cursor:default}
 .ym-button[data-variant="ghost"]{background:transparent;border-color:var(--dsw-alias-border-l1,rgba(255,255,255,.14));color:inherit}
 .ym-hint{font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.45;margin:0}
+.ym-status{height:17px;margin:0;font-size:12px;line-height:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);opacity:0;transition:opacity .15s ease}
+.ym-status[data-on="true"]{opacity:1}
+.ym-status-error{color:var(--dsw-alias-label-danger,#ff6b6b)}
 .ym-error{font-size:12px;color:var(--dsw-alias-label-danger,#ff6b6b);margin:0}
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
@@ -479,6 +482,22 @@ window.__ModuleLoader__.load({
         throw error;
       }
       return envelope.value;
+    }
+
+    /**
+     * One fixed-height line for every temporary message. It always occupies the
+     * same space and only fades its text in, so a short «Ищем…» can never push
+     * the list below it around.
+     */
+    function StatusLine({ text, error }) {
+      const message = typeof text === 'string' ? text : '';
+      const failed = error === true && message !== '';
+      return h('p', {
+        className: failed ? 'ym-status ym-status-error' : 'ym-status',
+        'data-on': message === '' ? 'false' : 'true',
+        role: failed ? 'alert' : undefined,
+        title: message,
+      }, message === '' ? '\u00a0' : message);
     }
 
     /* ------------------------------------------------------------------ */
@@ -1563,14 +1582,18 @@ window.__ModuleLoader__.load({
               onClick: () => addToQueue(state.tracks),
             }, '+')),
           editPanel,
-          state.tracksLoading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
-          state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
-          state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
+          h(StatusLine, {
+            text: state.error !== ''
+              ? state.error
+              : state.tracksLoading
+                ? t('searching')
+                : state.message !== '' ? state.message : !state.tracksLoading && rows.length === 0 ? t('playlistEmpty') : '',
+            error: state.error !== '',
+          }),
           rows.length > 0
             ? h('p', { className: 'ym-section' }, `${t('tracksSection')} \u00b7 ${state.tracks.length}`)
             : null,
-          h('div', { className: 'ym-results' }, rows),
-          !state.tracksLoading && rows.length === 0 ? h('p', { className: 'ym-hint' }, t('playlistEmpty')) : null);
+          h('div', { className: 'ym-results' }, rows));
       }
 
       const rows = [
@@ -1615,9 +1638,10 @@ window.__ModuleLoader__.load({
             disabled: state.busy || state.newTitle.trim() === '',
             onClick: () => void create(),
           }, t('createPlaylist'))),
-        state.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
-        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
-        state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
+        h(StatusLine, {
+          text: state.error !== '' ? state.error : state.loading ? t('searching') : state.message,
+          error: state.error !== '',
+        }),
         h('div', { className: 'ym-results' }, rows));
     }
     function seekTo(seconds) {
@@ -1749,9 +1773,10 @@ window.__ModuleLoader__.load({
           disabled: busy !== '',
           onClick: () => void start('user:onyourwave'),
         }, busy === 'user:onyourwave' ? t('waveLoading') : t('waveStart')),
-        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
-        catalog.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
-        catalog.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, catalog.error) : null,
+        h(StatusLine, {
+          text: error !== '' ? error : catalog.error !== '' ? catalog.error : catalog.loading ? t('searching') : '',
+          error: error !== '' || catalog.error !== '',
+        }),
         groups.map((group) => h('div', { key: group.kind },
           h('p', { className: 'ym-section' }, group.title),
           h('div', { className: 'ym-strip' }, chips(group.stations)))),
@@ -1763,7 +1788,7 @@ window.__ModuleLoader__.load({
           autoComplete: 'off',
           onChange: (event) => setQuery(event.target.value),
         }),
-        searching ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        h(StatusLine, { text: searching ? t('searching') : '' }),
         artists.length > 0
           ? h('div', { className: 'ym-results' }, artists.map((artist) => h('button', {
             key: `a${artist.id}`,
@@ -1880,7 +1905,7 @@ window.__ModuleLoader__.load({
 
       if (state.queue.length === 0) {
         return h('div', { className: 'ym-form' }, header,
-          h('p', { className: 'ym-hint' }, origin.loading ? t('searching') : t('queueEmpty')));
+          h(StatusLine, { text: origin.loading ? t('searching') : t('queueEmpty') }));
       }
 
       const rows = state.queue.map((track, index) => h('div', {
@@ -2335,11 +2360,14 @@ window.__ModuleLoader__.load({
             }, '\u00d7'))),
         h('p', { className: 'ym-lyrics-track' }, current === null ? '' : `${current.title} \u2014 ${current.artists}`),
         h('div', { className: 'ym-lyrics-body', ref: bodyRef },
-          data.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
-          data.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, data.error) : null,
-          !data.loading && data.error === '' && lines.length === 0
-            ? h('p', { className: 'ym-hint' }, t('noLyrics'))
-            : null,
+          h(StatusLine, {
+            text: data.error !== ''
+              ? data.error
+              : data.loading
+                ? t('searching')
+                : lines.length === 0 ? t('noLyrics') : '',
+            error: data.error !== '',
+          }),
           lines.map((line, index) => line.trim() === ''
             ? h('div', { key: `g${index}`, className: 'ym-lyric-gap', 'aria-hidden': 'true' })
             : h('p', {
@@ -2522,16 +2550,19 @@ window.__ModuleLoader__.load({
 
       return h('div', { className: 'ym-form' },
         bar,
-        data.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
-        data.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, data.error) : null,
+        h(StatusLine, {
+          text: data.error !== ''
+            ? data.error
+            : data.loading
+              ? t('searching')
+              : !data.loading && rows.length === 0 ? t('nothingFound') : '',
+          error: data.error !== '',
+        }),
         meta,
         chips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
         chips.length > 0 ? h('div', { className: 'ym-strip' }, chips) : null,
         rows.length > 0 ? h('p', { className: 'ym-section' }, t('tracksSection')) : null,
         rows.length > 0 ? h('div', { className: 'ym-results' }, rows) : null,
-        !data.loading && data.error === '' && rows.length === 0
-          ? h('p', { className: 'ym-hint' }, t('nothingFound'))
-          : null,
         entry.kind === 'artist' && data.total > data.tracks.length
           ? h('p', { className: 'ym-hint' }, `${t('allTracks')}: ${data.total}`)
           : null);
@@ -2707,12 +2738,16 @@ window.__ModuleLoader__.load({
           spellCheck: false,
           onChange: (event) => setQuery(event.target.value),
         }),
-        busy ? h('p', { className: 'ym-hint' }, t('searching')) : null,
-        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
-        !busy && error === '' && query.trim() !== '' && tracks.length === 0
-          ? h('p', { className: 'ym-hint' }, t('nothingFound'))
-          : null,
-        flash !== '' ? h('p', { className: 'ym-hint' }, flash) : null,
+        h(StatusLine, {
+          text: error !== ''
+            ? error
+            : busy
+              ? t('searching')
+              : flash !== ''
+                ? flash
+                : !busy && query.trim() !== '' && tracks.length === 0 ? t('nothingFound') : '',
+          error: error !== '',
+        }),
         artistChips.length > 0 ? h('p', { className: 'ym-section' }, t('artistsSection')) : null,
         artistChips.length > 0 ? h('div', { className: 'ym-strip' }, artistChips) : null,
         albumChips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
