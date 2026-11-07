@@ -20,6 +20,8 @@ import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readAlbum, readArtist, readIdentity, readLyrics, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 import { readLyricsExternal } from './lib/lyrics.js';
+import { readAmalgama } from './lib/amalgama.js';
+import { machineTranslate } from './lib/translate.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
@@ -67,6 +69,18 @@ async function readJsonBody(request) {
 
 function text(value, max) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+/**
+ * Cheap script check used before translating: a Russian song needs no
+ * translation, and a mostly-latin one almost certainly does.
+ */
+function isRussianText(lines) {
+  const joined = lines.join(' ');
+  const cyrillic = (joined.match(/[а-яё]/giu) ?? []).length;
+  const latin = (joined.match(/[a-z]/giu) ?? []).length;
+  if (cyrillic + latin === 0) return true;
+  return cyrillic / (cyrillic + latin) >= 0.6;
 }
 
 export function apply(ctx) {
@@ -279,6 +293,55 @@ export function apply(ctx) {
         });
       }
       return sendJson(response, 200, { ok: true, value: { available: false, source: 'none', lines: [], timed: [] } });
+    },
+
+    'music/translate': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const raw = Array.isArray(body.lines) ? body.lines : [];
+      const lines = raw.slice(0, 200).map((line) => text(String(line ?? ''), 900));
+      if (lines.every((line) => line === '')) return fail(response, 400, 'lines', 'lines are required');
+      const title = text(String(body.title ?? ''), 200);
+      const artist = text(String(body.artist ?? ''), 200);
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+
+      // A Russian song needs no translation, and saying so beats an empty window.
+      if (isRussianText(lines)) {
+        return sendJson(response, 200, { ok: true, value: { available: false, reason: 'same-language' } });
+      }
+
+      // A published literary translation is always better than a machine one.
+      const literary = await readAmalgama({ title, artist, lines });
+      if (literary !== null) {
+        return sendJson(response, 200, {
+          ok: true,
+          value: {
+            available: true,
+            source: 'amalgama',
+            mode: 'lines',
+            language: '',
+            lines: literary.translated,
+            text: '',
+          },
+        });
+      }
+
+      const machine = await machineTranslate(lines, 'ru');
+      if (machine === null) {
+        return sendJson(response, 200, { ok: true, value: { available: false, reason: 'failed' } });
+      }
+      return sendJson(response, 200, {
+        ok: true,
+        value: {
+          available: true,
+          source: 'machine',
+          mode: machine.mode,
+          language: machine.language,
+          lines: machine.lines,
+          text: machine.text,
+        },
+      });
     },
 
     'music/playlist/create': async (request, response) => {

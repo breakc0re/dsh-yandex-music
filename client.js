@@ -107,6 +107,12 @@ window.__ModuleLoader__.load({
       lyricsSource: 'Источник',
       lyricsSynced: 'синхронизировано',
       uiFailed: 'Это окно сломалось — закройте и откройте попап',
+      translate: 'Перевести на русский',
+      hideTranslation: 'Скрыть перевод',
+      translateFailed: 'Перевести не удалось',
+      sameLanguage: 'Текст уже на русском',
+      translationSource: 'Перевод',
+      translationMachine: 'машинный',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -199,6 +205,12 @@ window.__ModuleLoader__.load({
       lyricsSource: 'Source',
       lyricsSynced: 'synced',
       uiFailed: 'This pane broke — close and reopen the popover',
+      translate: 'Translate into Russian',
+      hideTranslation: 'Hide the translation',
+      translateFailed: 'Translation failed',
+      sameLanguage: 'The lyrics are already Russian',
+      translationSource: 'Translation',
+      translationMachine: 'machine',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -358,6 +370,13 @@ window.__ModuleLoader__.load({
 .ym-lyric[data-past="true"]{color:rgba(255,255,255,.45)}
 .ym-lyric[data-active="true"]{color:#fff;font-weight:600;font-size:15px;line-height:1.45;text-shadow:0 1px 6px rgba(0,0,0,.85)}
 .ym-lyric-gap{height:6px}
+.ym-lyrics-actions{display:flex;align-items:center;gap:2px;flex:none}
+.ym-lyrics-card .ym-mini-button{color:rgba(255,255,255,.72)}
+.ym-lyrics-card .ym-mini-button:hover{background:rgba(255,255,255,.12);color:#fff}
+.ym-lyrics-card .ym-mini-button[data-on="true"]{background:rgba(255,255,255,.16);color:#fff}
+.ym-lyric-tr{display:block;margin-top:3px;font-size:12px;line-height:1.4;font-weight:400;color:rgba(255,255,255,.62);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.ym-lyric[data-active="true"] .ym-lyric-tr{color:rgba(255,255,255,.88)}
+.ym-lyric-tr-block{margin:12px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.72)}
 .ym-lyrics-note{margin:14px 0 0;font-size:10px;color:rgba(255,255,255,.5)}
 `;
 
@@ -1714,6 +1733,14 @@ window.__ModuleLoader__.load({
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null);
     }
 
+    /** Cyrillic versus latin: a Cyrillic song has nothing to translate. */
+    function looksForeign(lines) {
+      const joined = lines.join(' ');
+      const cyrillic = (joined.match(/[а-яё]/giu) ?? []).length;
+      const latin = (joined.match(/[a-z]/giu) ?? []).length;
+      return latin > cyrillic && latin > 10;
+    }
+
     /**
      * Karaoke window docked to the popover. Yandex hands out lyrics as plain
      * lines, so each line's start is derived from the running position and the
@@ -1724,6 +1751,7 @@ window.__ModuleLoader__.load({
       const current = state.current;
       const currentId = current === null ? '' : String(current.id);
       const [data, setData] = React.useState({ loading: true, error: '', lines: [], timed: [], source: '' });
+      const [tr, setTr] = React.useState({ loading: false, active: false, error: '', source: '', mode: 'lines', lines: [], text: '' });
       const bodyRef = React.useRef(null);
 
       React.useEffect(() => {
@@ -1740,6 +1768,7 @@ window.__ModuleLoader__.load({
           duration: String(current === null ? 0 : current.durationMs),
         });
         setData({ loading: true, error: '', lines: [], timed: [], source: '' });
+        setTr({ loading: false, active: false, error: '', source: '', mode: 'lines', lines: [], text: '' });
         (async () => {
           try {
             const value = await call(`music/lyrics?${query}`);
@@ -1788,6 +1817,48 @@ window.__ModuleLoader__.load({
         if (active < 0 && lines.length > 0) active = lines.length - 1;
       }
 
+      const canTranslate = looksForeign(lines);
+
+      /** Fetch a Russian translation once and keep it until the track changes. */
+      const translate = async () => {
+        if (tr.loading) return;
+        if (tr.active) {
+          setTr((previous) => ({ ...previous, active: false }));
+          return;
+        }
+        setTr({ loading: true, active: false, error: '', source: '', mode: 'lines', lines: [], text: '' });
+        try {
+          const value = await call('music/translate', {
+            lines,
+            title: current === null ? '' : current.title,
+            artist: current === null ? '' : current.artists,
+          });
+          if (value.available !== true) {
+            setTr({
+              loading: false,
+              active: false,
+              error: value.reason === 'same-language' ? t('sameLanguage') : t('translateFailed'),
+              source: '',
+              mode: 'lines',
+              lines: [],
+              text: '',
+            });
+            return;
+          }
+          setTr({
+            loading: false,
+            active: true,
+            error: '',
+            source: typeof value.source === 'string' ? value.source : '',
+            mode: typeof value.mode === 'string' ? value.mode : 'lines',
+            lines: Array.isArray(value.lines) ? value.lines : [],
+            text: typeof value.text === 'string' ? value.text : '',
+          });
+        } catch (failure) {
+          setTr({ loading: false, active: false, error: failure.message || 'translate failed', source: '', mode: 'lines', lines: [], text: '' });
+        }
+      };
+
       React.useEffect(() => {
         const body = bodyRef.current;
         if (body === null) return;
@@ -1809,12 +1880,24 @@ window.__ModuleLoader__.load({
         h('div', { className: 'ym-lyrics-scrim', 'aria-hidden': 'true' }),
         h('div', { className: 'ym-lyrics-head' },
           h('span', { className: 'ym-card-title' }, t('lyrics')),
-          h('button', {
-            className: 'ym-card-close',
-            type: 'button',
-            'aria-label': t('close'),
-            onClick: onClose,
-          }, '\u00d7')),
+          h('span', { className: 'ym-lyrics-actions' },
+            canTranslate
+              ? h('button', {
+                className: 'ym-mini-button',
+                type: 'button',
+                'data-on': tr.active ? 'true' : 'false',
+                'aria-label': tr.active ? t('hideTranslation') : t('translate'),
+                title: tr.active ? t('hideTranslation') : t('translate'),
+                disabled: tr.loading,
+                onClick: () => void translate(),
+              }, tr.loading ? '\u2026' : '\u042f')
+              : null,
+            h('button', {
+              className: 'ym-card-close',
+              type: 'button',
+              'aria-label': t('close'),
+              onClick: onClose,
+            }, '\u00d7'))),
         h('p', { className: 'ym-lyrics-track' }, current === null ? '' : `${current.title} \u2014 ${current.artists}`),
         h('div', { className: 'ym-lyrics-body', ref: bodyRef },
           data.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
@@ -1832,11 +1915,21 @@ window.__ModuleLoader__.load({
               onClick: () => {
                 if (durationMs > 0) seekTo(Math.max(0, starts[index] / 1000));
               },
-            }, line)),
+            }, line,
+            tr.active && typeof tr.lines[index] === 'string' && tr.lines[index] !== ''
+              ? h('span', { className: 'ym-lyric-tr' }, tr.lines[index])
+              : null)),
+          tr.active && tr.mode === 'block' && tr.text !== ''
+            ? h('p', { className: 'ym-lyric-tr ym-lyric-tr-block' }, tr.text)
+            : null,
+          tr.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, tr.error) : null,
           lines.length > 0
             ? h('p', { className: 'ym-lyrics-note' },
               `${t('lyricsSource')}: ${data.source === 'yandex' ? 'Яндекс' : data.source === 'lrclib' ? 'lrclib' : '—'}`,
-              timed.length > 0 ? ` \u00b7 ${t('lyricsSynced')}` : ` \u00b7 ${t('lyricsEstimated')}`)
+              timed.length > 0 ? ` \u00b7 ${t('lyricsSynced')}` : ` \u00b7 ${t('lyricsEstimated')}`,
+              tr.active
+                ? ` \u00b7 ${t('translationSource')}: ${tr.source === 'amalgama' ? 'amalgama-lab' : tr.source === 'machine' ? t('translationMachine') : '—'}`
+                : '')
             : null));
     }
 
