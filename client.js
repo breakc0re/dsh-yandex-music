@@ -67,6 +67,10 @@ window.__ModuleLoader__.load({
       queueEmpty: 'Очередь пуста',
       nowPlaying: 'Сейчас играет',
       remoteControl: 'Remote Control',
+      deviceHint: 'Откройте ya.ru/device и введите код:',
+      deviceWaiting: 'Ждём подтверждения на странице Яндекса…',
+      deviceCheck: 'Проверить',
+      deviceRestart: 'Новый код',
       retry: 'Повторить',
       errorGeneric: 'Не удалось выполнить запрос',
     };
@@ -107,6 +111,10 @@ window.__ModuleLoader__.load({
       queueEmpty: 'The queue is empty',
       nowPlaying: 'Now playing',
       remoteControl: 'Remote Control',
+      deviceHint: 'Open ya.ru/device and enter the code:',
+      deviceWaiting: 'Waiting for confirmation on the Yandex page…',
+      deviceCheck: 'Check now',
+      deviceRestart: 'New code',
       retry: 'Retry',
       errorGeneric: 'The request failed',
     };
@@ -139,6 +147,7 @@ window.__ModuleLoader__.load({
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
 .ym-code{font-variant-numeric:tabular-nums}
+.ym-device-code{font-size:20px;letter-spacing:.22em;font-weight:600;text-align:center;padding:10px;border-radius:8px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-variant-numeric:tabular-nums}
 .ym-search{width:100%}
 .ym-results{display:flex;flex-direction:column;gap:1px;max-height:230px;overflow-y:auto;margin:8px -4px 0;padding:0 4px}
 .ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
@@ -312,79 +321,109 @@ window.__ModuleLoader__.load({
           busy ? t('saving') : t('save')));
     }
 
-    /** Confirmation-code sign-in: open the page, then type the 7 digits. */
-    function LoginScreen({ t, onSignedIn }) {
-      const [session, setSession] = React.useState(null);
-      const [code, setCode] = React.useState('');
-      const [busy, setBusy] = React.useState(false);
+    /**
+     * Device Flow sign-in. Yandex shows a short code, the user types it at
+     * ya.ru/device, and the plugin polls until the token arrives — no redirect
+     * URI and no token to copy. This is the only flow the Music client accepts.
+     */
+    function DeviceScreen({ t, onSignedIn }) {
+      const [flow, setFlow] = React.useState(null);
       const [error, setError] = React.useState('');
+      const [starting, setStarting] = React.useState(true);
+      const sessionRef = React.useRef(0);
+      const busyRef = React.useRef(false);
 
-      const start = async () => {
-        if (busy) return;
-        setBusy(true);
+      const start = React.useCallback(async () => {
+        sessionRef.current += 1;
+        const session = sessionRef.current;
+        setStarting(true);
         setError('');
+        setFlow(null);
         try {
-          const value = await call('auth/start', {});
-          setSession(value);
+          const value = await call('auth/device/start', {});
+          if (session !== sessionRef.current) return;
+          setFlow(value);
           try {
-            window.open(value.url, '_blank', 'noopener');
+            window.open(value.verificationUrl, '_blank', 'noopener');
           } catch {
             /* the link below is the fallback */
           }
         } catch (failure) {
-          setError(failure.message || t('errorGeneric'));
+          if (session === sessionRef.current) setError(failure.message || 'device auth failed');
         } finally {
-          setBusy(false);
+          if (session === sessionRef.current) setStarting(false);
         }
-      };
+      }, []);
 
-      const submit = async (event) => {
-        event.preventDefault();
-        if (session === null || busy) return;
-        setBusy(true);
-        setError('');
+      React.useEffect(() => {
+        void start();
+      }, [start]);
+
+      const poll = React.useCallback(async () => {
+        if (flow === null || busyRef.current) return;
+        const session = sessionRef.current;
+        busyRef.current = true;
         try {
-          await call('auth/complete', { code: code.trim(), state: session.state });
+          const value = await call('auth/device/poll', { flowId: flow.flowId });
+          if (session !== sessionRef.current) return;
+          if (value.pending === true) {
+            setError('');
+            return;
+          }
           await onSignedIn();
         } catch (failure) {
-          setError(failure.message || t('errorGeneric'));
+          if (session === sessionRef.current) setError(failure.message || 'device auth failed');
         } finally {
-          setBusy(false);
+          busyRef.current = false;
         }
-      };
+      }, [flow, onSignedIn]);
 
-      return h('form', { className: 'ym-form', onSubmit: submit },
-        h('p', { className: 'ym-hint' }, t('loginHint')),
+      React.useEffect(() => {
+        if (flow === null) return undefined;
+        const ms = Math.max(2, typeof flow.interval === 'number' ? flow.interval : 5) * 1000;
+        const timer = window.setInterval(() => {
+          void poll();
+        }, ms);
+        return () => window.clearInterval(timer);
+      }, [flow, poll]);
+
+      if (starting && flow === null) return h('p', { className: 'ym-hint' }, t('loading'));
+
+      if (flow === null) {
+        return h('div', { className: 'ym-form' },
+          h('p', { className: 'ym-error', role: 'alert' }, error),
+          h('button', {
+            className: 'ym-button',
+            type: 'button',
+            onClick: () => void start(),
+          }, t('retry')));
+      }
+
+      return h('div', { className: 'ym-form' },
+        h('p', { className: 'ym-hint' }, t('deviceHint')),
+        h('div', { className: 'ym-device-code' }, flow.userCode),
+        h('a', {
+          className: 'ym-link',
+          href: flow.verificationUrl,
+          target: '_blank',
+          rel: 'noreferrer',
+        }, flow.verificationUrl),
+        error !== ''
+          ? h('p', { className: 'ym-error', role: 'alert' }, error)
+          : h('p', { className: 'ym-hint' }, t('deviceWaiting')),
         h('button', {
           className: 'ym-button',
           type: 'button',
-          disabled: busy,
-          onClick: start,
-        }, session === null ? t('login') : t('openPage')),
-        session !== null ? h('a', {
-          className: 'ym-link',
-          href: session.url,
-          target: '_blank',
-          rel: 'noreferrer',
-        }, session.url) : null,
-        h('label', { className: 'ym-field' },
-          h('span', { className: 'ym-label' }, t('code')),
-          h('input', {
-            className: 'ym-input ym-code',
-            value: code,
-            autoComplete: 'one-time-code',
-            spellCheck: false,
-            maxLength: 512,
-            disabled: session === null,
-            onChange: (event) => setCode(event.target.value.trim()),
-          })),
-        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
+          onClick: () => void poll(),
+        }, t('deviceCheck')),
         h('button', {
           className: 'ym-button',
-          type: 'submit',
-          disabled: busy || session === null || code.trim() === '',
-        }, busy ? t('submitting') : t('submit')));
+          'data-variant': 'ghost',
+          type: 'button',
+          onClick: () => void start(),
+        }, t('deviceRestart')));
     }
+
 
     /** Signed-in summary with a way out. */
     function AccountScreen({ t, status, onSignedOut }) {
@@ -692,7 +731,7 @@ window.__ModuleLoader__.load({
           h('button', { className: 'ym-button', type: 'button', onClick: reload }, t('retry')));
       }
       if (!state.status.configured) return h(SetupScreen, { t, onSaved: reload });
-      if (!state.status.authorized) return h(LoginScreen, { t, onSignedIn: reload });
+      if (!state.status.authorized) return h(DeviceScreen, { t, onSignedIn: reload });
       return h(SearchScreen, { t, status: state.status, onSignedOut: reload });
     }
 

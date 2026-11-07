@@ -17,6 +17,7 @@ import {
   needsRefresh,
   refreshAccessToken,
 } from './lib/oauth.js';
+import { MUSIC_CLIENT_ID, MUSIC_CLIENT_SECRET, pollDeviceToken, requestDeviceCode } from './lib/device.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 
@@ -74,6 +75,8 @@ export function apply(ctx) {
   const dir = resolveDataDir(ctx);
   /** state → { verifier, at }; in-memory only, so a restart just asks again. */
   const pending = new Map();
+  /** flowId → { deviceCode, at, expiresIn } for the Device Flow. */
+  const pendingFlows = new Map();
 
   const prunePending = () => {
     const now = Date.now();
@@ -215,6 +218,66 @@ export function apply(ctx) {
         uid: null,
       });
       return sendJson(response, 200, { ok: true, value: publicStatus(next) });
+    },
+
+    'auth/device/start': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      prunePending();
+      const auth = await readAuth(dir);
+      if (auth.clientId === '') return fail(response, 400, 'client-id', 'client_id is required');
+      const deviceId = auth.deviceId !== '' ? auth.deviceId : randomUUID();
+      if (deviceId !== auth.deviceId) await writeAuth(dir, { ...auth, deviceId });
+      let code;
+      try {
+        code = await requestDeviceCode({ clientId: auth.clientId, deviceId, deviceName: 'DSH NEXT' });
+      } catch (error) {
+        return fail(response, 502, 'device-code', error instanceof Error ? error.message : 'device code failed');
+      }
+      const flowId = randomUUID();
+      pendingFlows.set(flowId, { deviceCode: code.deviceCode, at: Date.now(), expiresIn: code.expiresIn });
+      return sendJson(response, 200, {
+        ok: true,
+        value: {
+          flowId,
+          userCode: code.userCode,
+          verificationUrl: code.verificationUrl,
+          expiresIn: code.expiresIn,
+          interval: code.interval,
+        },
+      });
+    },
+
+    'auth/device/poll': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const flow = pendingFlows.get(text(body.flowId, 64));
+      if (flow === undefined) return fail(response, 400, 'flow', 'authorization session expired, start again');
+      if (Date.now() - flow.at > flow.expiresIn * 1000) {
+        pendingFlows.delete(text(body.flowId, 64));
+        return fail(response, 408, 'expired', 'the code expired, start again');
+      }
+      const auth = await readAuth(dir);
+      // The Music client's own secret is required for the device grant; PKCE does
+      // not waive it. A personal application has to supply its own secret.
+      const clientSecret = auth.clientSecret !== ''
+        ? auth.clientSecret
+        : auth.clientId === MUSIC_CLIENT_ID ? MUSIC_CLIENT_SECRET : '';
+      const result = await pollDeviceToken({ clientId: auth.clientId, clientSecret, deviceCode: flow.deviceCode });
+      if (result.status === 'pending') return sendJson(response, 200, { ok: true, value: { pending: true } });
+      if (result.status === 'error') {
+        pendingFlows.delete(text(body.flowId, 64));
+        return fail(response, 400, result.code, result.message);
+      }
+      pendingFlows.delete(text(body.flowId, 64));
+      let next = applyTokenResponse(auth, result.token);
+      const [identity, account] = await Promise.all([
+        readIdentity(next.accessToken),
+        readAccount(next.accessToken),
+      ]);
+      if (identity !== null) next = { ...next, uid: identity.uid, login: identity.login };
+      if (account !== null) next = { ...next, plus: account.hasPlus === true };
+      next = await writeAuth(dir, next);
+      return sendJson(response, 200, { ok: true, value: { pending: false, status: publicStatus(next) } });
     },
 
     'music/search': async (request, response) => {
