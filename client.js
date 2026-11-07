@@ -325,17 +325,21 @@ window.__ModuleLoader__.load({
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
-.ym-controls{display:flex;align-items:center;gap:6px}
+.ym-controls{display:flex;align-items:center;gap:4px}
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
 .ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-seek{flex:1;min-width:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-time{flex:none;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
-.ym-volume{display:flex;align-items:center;gap:4px;margin-top:6px}
-.ym-volume .ym-icon-button{width:22px;height:22px}
-.ym-volume-range{flex:1;min-width:0;max-width:120px;height:14px;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-volume-value{min-width:30px;text-align:right}
+.ym-volume-wrap{position:relative;display:inline-flex;flex:none}
+.ym-volume-pop{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:6px;padding:10px 8px 7px;border-radius:10px;background:rgba(16,16,20,.98);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 26px rgba(0,0,0,.5);z-index:12}
+/* Keeps the pointer inside the wrapper while crossing the gap to the panel. */
+.ym-volume-pop::after{content:'';position:absolute;left:0;right:0;top:100%;height:10px}
+.ym-volume-wrap:hover .ym-volume-pop,.ym-volume-wrap:focus-within .ym-volume-pop{display:flex}
+.ym-volume-slot{width:22px;height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ym-volume-vert{flex:none;width:96px;height:18px;margin:0;transform:rotate(-90deg);accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
+.ym-volume-value{font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:380px;height:380px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;background:rgba(18,18,21,.94);backdrop-filter:blur(10px)}
 .ym-lyrics-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 2px}
 .ym-lyrics-track{flex:none;margin:0;padding:0 12px 6px;font-size:11px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.07)}
@@ -1582,7 +1586,28 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'ym-player' },
         h('div', { className: 'ym-player-head' },
           h('span', { className: 'ym-player-title' }, `${current.title} — ${current.artists}`),
-          state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null),
+          state.preview ? h('span', { className: 'ym-badge' }, t('previewBadge')) : null,
+          h('span', { className: 'ym-volume-wrap' },
+            h('button', {
+              className: 'ym-icon-button',
+              type: 'button',
+              'aria-label': state.muted ? t('unmute') : t('mute'),
+              title: state.muted ? t('unmute') : t('mute'),
+              onClick: toggleMute,
+            }, h(VolumeIcon, { size: 15, muted: state.muted })),
+            h('div', { className: 'ym-volume-pop', role: 'group', 'aria-label': t('volume') },
+              h('div', { className: 'ym-volume-slot' },
+                h('input', {
+                  className: 'ym-volume-vert',
+                  type: 'range',
+                  min: 0,
+                  max: 100,
+                  step: 1,
+                  value: Math.round((state.muted ? 0 : state.volume) * 100),
+                  'aria-label': t('volume'),
+                  onChange: (event) => setVolume(Number(event.target.value) / 100),
+                })),
+              h('span', { className: 'ym-volume-value' }, `${Math.round((state.muted ? 0 : state.volume) * 100)}%`)))),
         h('div', { className: 'ym-controls' },
           h('button', {
             className: 'ym-icon-button',
@@ -1627,6 +1652,15 @@ window.__ModuleLoader__.load({
             'aria-expanded': addOpen ? 'true' : 'false',
             onClick: () => setAddOpen((value) => !value),
           }, '+'),
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'data-on': state.lyricsOpen ? 'true' : 'false',
+            'aria-label': t('lyrics'),
+            title: t('lyrics'),
+            'aria-pressed': state.lyricsOpen ? 'true' : 'false',
+            onClick: toggleLyrics,
+          }, 'Aa'),
           h('input', {
             className: 'ym-seek',
             type: 'range',
@@ -1637,35 +1671,6 @@ window.__ModuleLoader__.load({
             onChange: (event) => seekTo(Number(event.target.value)),
           }),
           h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
-        h('div', { className: 'ym-volume' },
-          h('button', {
-            className: 'ym-icon-button',
-            type: 'button',
-            'aria-label': state.muted ? t('unmute') : t('mute'),
-            title: state.muted ? t('unmute') : t('mute'),
-            onClick: toggleMute,
-          }, h(VolumeIcon, { size: 15, muted: state.muted })),
-          h('input', {
-            className: 'ym-volume-range',
-            type: 'range',
-            min: 0,
-            max: 100,
-            step: 1,
-            value: Math.round((state.muted ? 0 : state.volume) * 100),
-            'aria-label': t('volume'),
-            title: `${t('volume')}: ${Math.round((state.muted ? 0 : state.volume) * 100)}%`,
-            onChange: (event) => setVolume(Number(event.target.value) / 100),
-          }),
-          h('span', { className: 'ym-time ym-volume-value' }, `${Math.round((state.muted ? 0 : state.volume) * 100)}%`),
-          h('button', {
-            className: 'ym-icon-button',
-            type: 'button',
-            'data-on': state.lyricsOpen ? 'true' : 'false',
-            'aria-label': t('lyrics'),
-            title: t('lyrics'),
-            'aria-pressed': state.lyricsOpen ? 'true' : 'false',
-            onClick: toggleLyrics,
-          }, 'Aa')),
         addOpen ? h(AddToPlaylist, { t, track: current, onClose: () => setAddOpen(false) }) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null);
     }
