@@ -359,6 +359,11 @@ window.__ModuleLoader__.load({
 .ym-tab[data-active="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);border-color:transparent;color:#fff;box-shadow:0 2px 10px rgba(59,111,224,.32)}
 .ym-device-code{font-size:20px;letter-spacing:.22em;font-weight:600;text-align:center;padding:10px;border-radius:8px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-variant-numeric:tabular-nums}
 .ym-search{width:100%}
+.ym-search-wrap{position:relative;display:flex}
+.ym-search-wrap .ym-search{padding-right:88px}
+.ym-search-status{position:absolute;right:9px;top:50%;transform:translateY(-50%);max-width:72%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:1;color:var(--dsw-alias-label-secondary);pointer-events:none;opacity:0;transition:opacity .15s ease}
+.ym-search-status[data-on="true"]{opacity:1}
+.ym-search-status[data-error="true"]{color:var(--dsw-alias-label-danger,#ff6b6b)}
 .ym-results{display:flex;flex-direction:column;gap:1px;margin:8px -4px 0;padding:0 4px}
 .ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
 .ym-result{transition:background .12s ease}.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
@@ -1721,10 +1726,9 @@ window.__ModuleLoader__.load({
             disabled: state.busy || state.newTitle.trim() === '',
             onClick: () => void create(),
           }, t('createPlaylist'))),
-        h(StatusLine, {
-          text: state.error !== '' ? state.error : state.loading ? t('searching') : state.message,
-          error: state.error !== '',
-        }),
+        state.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
+        state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
         h('div', { className: 'ym-results' }, rows));
     }
     function seekTo(seconds) {
@@ -2812,25 +2816,31 @@ window.__ModuleLoader__.load({
         : h('span', { className: 'ym-chip-cover' }),
       h('span', { className: 'ym-chip-title' }, album.title)));
 
+      const searchStatus = error !== ''
+        ? error
+        : busy
+          ? t('searching')
+          : flash !== ''
+            ? flash
+            : !busy && query.trim() !== '' && tracks.length === 0 ? t('nothingFound') : '';
+
       const searchPane = h('div', { className: 'ym-form' },
-        h('input', {
-          className: 'ym-input ym-search',
-          value: query,
-          placeholder: t('searchPlaceholder'),
-          autoComplete: 'off',
-          spellCheck: false,
-          onChange: (event) => setQuery(event.target.value),
-        }),
-        h(StatusLine, {
-          text: error !== ''
-            ? error
-            : busy
-              ? t('searching')
-              : flash !== ''
-                ? flash
-                : !busy && query.trim() !== '' && tracks.length === 0 ? t('nothingFound') : '',
-          error: error !== '',
-        }),
+        h('div', { className: 'ym-search-wrap' },
+          h('input', {
+            className: 'ym-input ym-search',
+            value: query,
+            placeholder: t('searchPlaceholder'),
+            autoComplete: 'off',
+            spellCheck: false,
+            onChange: (event) => setQuery(event.target.value),
+          }),
+          h('span', {
+            className: 'ym-search-status',
+            'data-on': searchStatus === '' ? 'false' : 'true',
+            'data-error': error !== '' ? 'true' : 'false',
+            'aria-live': 'polite',
+            title: searchStatus,
+          }, searchStatus)),
         artistChips.length > 0 ? h('p', { className: 'ym-section' }, t('artistsSection')) : null,
         artistChips.length > 0 ? h('div', { className: 'ym-strip' }, artistChips) : null,
         albumChips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
