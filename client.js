@@ -10,8 +10,9 @@ window.__ModuleLoader__.load({
     const NS = 'yandexMusic';
     /** Marks the injected stylesheet so a reload replaces it instead of stacking. */
     const STYLE_ID = 'yandex-music';
-    /** Popover width in pixels; the card is clamped to the viewport. */
-    const CARD_WIDTH = 340;
+    /** Popover geometry: a square card anchored above the footer row. */
+    const CARD_WIDTH = 380;
+    const CARD_HEIGHT = 380;
     /** Host routes owned by this plugin. */
     const API = '/api/plugins/yandex-music';
     /**
@@ -69,6 +70,7 @@ window.__ModuleLoader__.load({
       tabSearch: 'Поиск',
       tabWave: 'Волна',
       tabPlaylists: 'Плейлисты',
+      back: 'Назад',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -124,6 +126,7 @@ window.__ModuleLoader__.load({
       tabSearch: 'Search',
       tabWave: 'My Wave',
       tabPlaylists: 'Playlists',
+      back: 'Back',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -179,9 +182,14 @@ window.__ModuleLoader__.load({
 [data-slot="sidebar.footer.action"] .aav-footerBtn{display:none !important}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ym-card{position:fixed;z-index:60;box-sizing:border-box;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-base,#1b1b1b);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--dsw-alias-label-primary);font-size:13px}
-.ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
-.ym-card-title{font-weight:600}
+.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:380px;height:380px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:#17171a}
+.ym-card-bg{position:absolute;inset:-25%;background-size:cover;background-position:center;filter:blur(28px) saturate(1.35);opacity:.55;pointer-events:none;transition:background-image .3s ease}
+.ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(14,14,16,.42) 0%,rgba(14,14,16,.78) 62%,rgba(14,14,16,.92) 100%)}
+.ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
+.ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;flex:none}
+.ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-card-pane{flex:1;min-height:0;overflow-y:auto;padding:0 12px 8px}
+.ym-card-player{flex:none;padding:8px 12px 11px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
 .ym-card-close{border:0;background:transparent;color:inherit;cursor:pointer;padding:2px 6px;border-radius:6px;font-size:16px;line-height:1}
 .ym-card-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-form{display:flex;flex-direction:column;gap:8px}
@@ -197,13 +205,13 @@ window.__ModuleLoader__.load({
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
 .ym-code{font-variant-numeric:tabular-nums}
-.ym-tabs{display:flex;gap:4px;margin-bottom:8px}
+.ym-tabs{display:flex;gap:4px;margin-bottom:8px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
 .ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
 .ym-device-code{font-size:20px;letter-spacing:.22em;font-weight:600;text-align:center;padding:10px;border-radius:8px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-variant-numeric:tabular-nums}
 .ym-search{width:100%}
-.ym-results{display:flex;flex-direction:column;gap:1px;max-height:230px;overflow-y:auto;margin:8px -4px 0;padding:0 4px}
+.ym-results{display:flex;flex-direction:column;gap:1px;margin:8px -4px 0;padding:0 4px}
 .ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
 .ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-result[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
@@ -213,7 +221,7 @@ window.__ModuleLoader__.load({
 .ym-result-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-result-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-size:11px}
 .ym-result-time{margin-left:auto;flex:none;color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums}
-.ym-player{margin-top:10px;padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1))}
+.ym-player{margin-top:0;padding-top:0;border-top:0}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
@@ -848,10 +856,18 @@ window.__ModuleLoader__.load({
       likes.loaded = true;
     }
 
-    /** «Мне нравится» first, then whatever playlists the account owns. */
+    /** «Мне нравится» first, then the account's playlists, each opening its tracks. */
     function PlaylistsPane({ t }) {
-      const [state, setState] = React.useState({ loading: true, playlists: [], error: '' });
-      const [busy, setBusy] = React.useState(false);
+      const playback = usePlayer();
+      const [state, setState] = React.useState({
+        view: 'list',
+        loading: true,
+        error: '',
+        playlists: [],
+        title: '',
+        tracks: [],
+        tracksLoading: false,
+      });
 
       React.useEffect(() => {
         let cancelled = false;
@@ -859,13 +875,16 @@ window.__ModuleLoader__.load({
           try {
             const value = await call('music/playlists');
             if (cancelled) return;
-            setState({
+            setState((previous) => ({
+              ...previous,
               loading: false,
               playlists: Array.isArray(value.playlists) ? value.playlists : [],
               error: '',
-            });
+            }));
           } catch (failure) {
-            if (!cancelled) setState({ loading: false, playlists: [], error: failure.message || 'playlists failed' });
+            if (!cancelled) {
+              setState((previous) => ({ ...previous, loading: false, error: failure.message || 'playlists failed' }));
+            }
           }
         })();
         return () => {
@@ -873,26 +892,65 @@ window.__ModuleLoader__.load({
         };
       }, []);
 
-      const open = async (kind) => {
-        if (busy) return;
-        setBusy(true);
+      const open = async (kind, title) => {
+        setState((previous) => ({
+          ...previous,
+          view: 'tracks',
+          title,
+          tracks: [],
+          tracksLoading: true,
+          error: '',
+        }));
         try {
           const value = await call('music/playlist', { kind });
-          const tracks = Array.isArray(value.tracks) ? value.tracks : [];
-          if (tracks.length > 0) playQueue(tracks, 0);
+          setState((previous) => ({
+            ...previous,
+            tracksLoading: false,
+            tracks: Array.isArray(value.tracks) ? value.tracks : [],
+          }));
         } catch (failure) {
-          setState((previous) => ({ ...previous, error: failure.message || 'playlist failed' }));
-        } finally {
-          setBusy(false);
+          setState((previous) => ({ ...previous, tracksLoading: false, error: failure.message || 'playlist failed' }));
         }
       };
+
+      if (state.view === 'tracks') {
+        const playing = playback.current === null ? '' : String(playback.current.id);
+        const rows = state.tracks.map((track, index) => h('button', {
+          key: `${track.id}-${index}`,
+          type: 'button',
+          className: 'ym-result',
+          'data-active': playing !== '' && playing === String(track.id) ? 'true' : 'false',
+          onClick: () => playQueue(state.tracks, index),
+        },
+        track.cover !== null
+          ? h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' })
+          : h('span', { className: 'ym-result-cover' }),
+        h('span', { className: 'ym-result-text' },
+          h('span', { className: 'ym-result-title' }, track.title),
+          h('span', { className: 'ym-result-sub' }, track.artists)),
+        h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs))));
+
+        return h('div', { className: 'ym-form' },
+          h('div', { className: 'ym-row' },
+            h('button', {
+              type: 'button',
+              className: 'ym-icon-button',
+              'aria-label': t('back'),
+              title: t('back'),
+              onClick: () => setState((previous) => ({ ...previous, view: 'list', error: '' })),
+            }, '\u2190'),
+            h('span', { className: 'ym-playlist-title' }, state.title)),
+          state.tracksLoading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+          state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
+          h('div', { className: 'ym-results' }, rows));
+      }
 
       const rows = [
         h('button', {
           key: 'liked',
           type: 'button',
           className: 'ym-result',
-          onClick: () => void open(3),
+          onClick: () => void open(3, t('likedPlaylist')),
         },
         h('span', { className: 'ym-result-icon', 'aria-hidden': 'true' }, '\u2665'),
         h('span', { className: 'ym-result-text' },
@@ -901,7 +959,7 @@ window.__ModuleLoader__.load({
           key: `k${playlist.kind}`,
           type: 'button',
           className: 'ym-result',
-          onClick: () => void open(playlist.kind),
+          onClick: () => void open(playlist.kind, playlist.title),
         },
         playlist.cover !== null
           ? h('img', { className: 'ym-result-cover', src: playlist.cover, alt: '', loading: 'lazy' })
@@ -916,7 +974,6 @@ window.__ModuleLoader__.load({
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
         h('div', { className: 'ym-results' }, rows));
     }
-
     function seekTo(seconds) {
       const audio = ensureAudio();
       if (Number.isFinite(seconds)) audio.currentTime = seconds;
@@ -1129,7 +1186,6 @@ window.__ModuleLoader__.load({
             onClick: () => setTab('wave'),
           }, t('tabWave'))),
         tab === 'wave' ? wavePane : tab === 'playlists' ? h(PlaylistsPane, { t }) : searchPane,
-        h(PlayerBar, { t }),
         h(AccountScreen, { t, status, onSignedOut }));
     }
 
@@ -1237,6 +1293,8 @@ window.__ModuleLoader__.load({
         };
       }, [open, place]);
 
+      const cover = current !== null && typeof current.cover === 'string' ? current.cover : null;
+
       const card = open && anchor !== null
         ? ReactDOM.createPortal(
           h('div', {
@@ -1246,24 +1304,29 @@ window.__ModuleLoader__.load({
             'aria-label': t('title'),
             style: {
               left: Math.max(8, Math.min(anchor.left, window.innerWidth - CARD_WIDTH - 8)),
-              bottom: Math.max(8, window.innerHeight - anchor.top + 8),
-              width: CARD_WIDTH,
+              bottom: Math.max(8, Math.min(window.innerHeight - anchor.top + 8, window.innerHeight - CARD_HEIGHT - 8)),
             },
           },
-          h('div', { className: 'ym-card-head' },
-            h('span', { className: 'ym-card-title' }, t('title')),
-            h('button', {
-              type: 'button',
-              className: 'ym-card-close',
-              'aria-label': t('close'),
-              onClick: () => setOpen(false),
-            }, '\u00d7')),
-          h(PopoverBody, { t })),
+          h('div', {
+            className: 'ym-card-bg',
+            'aria-hidden': 'true',
+            style: cover === null ? {} : { backgroundImage: `url("${cover}")` },
+          }),
+          h('div', { className: 'ym-card-scrim', 'aria-hidden': 'true' }),
+          h('div', { className: 'ym-card-inner' },
+            h('div', { className: 'ym-card-head' },
+              h('span', { className: 'ym-card-title' }, t('title')),
+              h('button', {
+                type: 'button',
+                className: 'ym-card-close',
+                'aria-label': t('close'),
+                onClick: () => setOpen(false),
+              }, '\u00d7')),
+            h('div', { className: 'ym-card-pane' }, h(PopoverBody, { t })),
+            h('div', { className: 'ym-card-player' }, h(PlayerBar, { t })))),
           document.body,
         )
         : null;
-
-      const cover = current !== null && typeof current.cover === 'string' ? current.cover : null;
       const durationMs = playback.duration > 0
         ? playback.duration * 1000
         : current !== null ? current.durationMs : 0;
