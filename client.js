@@ -255,8 +255,7 @@ window.__ModuleLoader__.load({
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card{position:fixed;z-index:60;box-sizing:border-box;width:380px;height:380px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:rgba(18,18,21,.82);backdrop-filter:blur(6px)}
-.ym-card-bg{position:absolute;inset:-12%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(14px) saturate(1.2);opacity:.95;pointer-events:none;transform:scale(1.08)}
-.ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,12,.16) 0%,rgba(10,10,12,.42) 58%,rgba(10,10,12,.74) 100%)}
+
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 2px;flex:none}
 .ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -347,16 +346,19 @@ window.__ModuleLoader__.load({
 .ym-volume-slot{width:22px;height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ym-volume-vert{flex:none;width:96px;height:18px;margin:0;transform:rotate(-90deg);accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-volume-value{font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
-.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:380px;height:380px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;background:rgba(18,18,21,.94);backdrop-filter:blur(10px)}
+.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:380px;height:380px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 18px 44px rgba(0,0,0,.6);color:#fff;font-size:13px;overflow:hidden;background:rgba(10,10,13,.72)}
+.ym-lyrics-bg{position:absolute;inset:-10%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(9px) saturate(1.05);opacity:.5;pointer-events:none;transform:scale(1.06)}
+.ym-lyrics-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,8,10,.62) 0%,rgba(8,8,10,.74) 55%,rgba(8,8,10,.87) 100%)}
+.ym-lyrics-card > :not(.ym-lyrics-bg):not(.ym-lyrics-scrim){position:relative;z-index:1}
 .ym-lyrics-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 2px}
-.ym-lyrics-track{flex:none;margin:0;padding:0 12px 6px;font-size:11px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.07)}
-.ym-lyrics-body{flex:1;min-height:0;overflow-y:auto;padding:14px 14px 28px}
-.ym-lyric{margin:0 0 8px;font-size:13px;line-height:1.45;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:color .12s}
-.ym-lyric:hover{color:var(--dsw-alias-label-primary)}
-.ym-lyric[data-past="true"]{opacity:.55}
-.ym-lyric[data-active="true"]{color:var(--dsw-alias-label-accent,#7aa7ff);font-weight:600;font-size:15px;line-height:1.4}
+.ym-lyrics-track{flex:none;margin:0;padding:0 12px 6px;font-size:11px;color:rgba(255,255,255,.66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-lyrics-body{flex:1;min-height:0;overflow-y:auto;padding:12px 16px 30px}
+.ym-lyric{margin:0 0 10px;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.78);cursor:pointer;text-shadow:0 1px 3px rgba(0,0,0,.75);transition:color .12s}
+.ym-lyric:hover{color:#fff}
+.ym-lyric[data-past="true"]{color:rgba(255,255,255,.45)}
+.ym-lyric[data-active="true"]{color:#fff;font-weight:600;font-size:15px;line-height:1.45;text-shadow:0 1px 6px rgba(0,0,0,.85)}
 .ym-lyric-gap{height:6px}
-.ym-lyrics-note{margin:14px 0 0;font-size:10px;color:var(--dsw-alias-label-secondary);opacity:.7}
+.ym-lyrics-note{margin:14px 0 0;font-size:10px;color:rgba(255,255,255,.5)}
 `;
 
     /** Inject the plugin stylesheet once; the disposer removes it on teardown. */
@@ -700,7 +702,6 @@ window.__ModuleLoader__.load({
           onClick: () => void start(),
         }, t('deviceRestart')));
     }
-
 
     /** Signed-in summary with a way out. */
     /**
@@ -1800,6 +1801,12 @@ window.__ModuleLoader__.load({
       }, [active, lines.length]);
 
       return h('div', { className: 'ym-lyrics-card', 'data-yandex-music-lyrics': '', style, role: 'dialog', 'aria-label': t('lyrics') },
+        h('div', {
+          className: 'ym-lyrics-bg',
+          'aria-hidden': 'true',
+          style: current === null || typeof current.cover !== 'string' ? {} : { backgroundImage: `url("${current.cover}")` },
+        }),
+        h('div', { className: 'ym-lyrics-scrim', 'aria-hidden': 'true' }),
         h('div', { className: 'ym-lyrics-head' },
           h('span', { className: 'ym-card-title' }, t('lyrics')),
           h('button', {
@@ -2382,12 +2389,6 @@ window.__ModuleLoader__.load({
             'aria-label': t('title'),
             style: cardPos,
           },
-          h('div', {
-            className: 'ym-card-bg',
-            'aria-hidden': 'true',
-            style: cover === null ? {} : { backgroundImage: `url("${cover}")` },
-          }),
-          h('div', { className: 'ym-card-scrim', 'aria-hidden': 'true' }),
           h('div', { className: 'ym-card-inner' },
             h('div', { className: 'ym-card-head' },
               h('span', { className: 'ym-card-title' }, t('title')),
