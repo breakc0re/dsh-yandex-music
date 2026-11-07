@@ -258,14 +258,14 @@ window.__ModuleLoader__.load({
 .ym-card-bg{position:absolute;inset:-12%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(14px) saturate(1.2);opacity:.95;pointer-events:none;transform:scale(1.08)}
 .ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,12,.16) 0%,rgba(10,10,12,.42) 58%,rgba(10,10,12,.74) 100%)}
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
-.ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;flex:none}
+.ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 2px;flex:none}
 .ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card-pane{flex:1;min-height:0;overflow-y:auto;padding:0 12px 8px}
-.ym-card-player{flex:none;padding:8px 12px 11px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
+.ym-card-player{flex:none;padding:6px 12px 8px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
 .ym-head-actions{display:flex;align-items:center;gap:2px;flex:none}
-.ym-account{position:absolute;top:46px;right:10px;z-index:20;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.ym-account{position:absolute;top:38px;right:10px;z-index:20;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
 .ym-account-name{font-size:12px;line-height:1.45;margin:0 0 9px;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
-.ym-card-close{border:0;background:transparent;color:inherit;cursor:pointer;padding:2px 6px;border-radius:6px;font-size:16px;line-height:1}
+.ym-card-close{border:0;background:transparent;color:inherit;cursor:pointer;padding:1px 5px;border-radius:6px;font-size:15px;line-height:1}
 .ym-card-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-form{display:flex;flex-direction:column;gap:8px}
 .ym-field{display:flex;flex-direction:column;gap:4px}
@@ -293,7 +293,7 @@ window.__ModuleLoader__.load({
 .ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
 .ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
-.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:3px 12px 8px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;position:sticky;top:0;z-index:6;margin:0 -12px -8px;padding:2px 12px 7px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
 .ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
@@ -328,15 +328,15 @@ window.__ModuleLoader__.load({
 .ym-result-sub.ym-link-button{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
 .ym-index{flex:none;width:16px;text-align:right;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
-.ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
 .ym-controls{display:flex;align-items:center;gap:4px}
-.ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
+.ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
 .ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-seek{flex:1;min-width:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-seek-row{display:flex;align-items:center;margin:0 0 6px}
+.ym-seek-row{display:flex;align-items:center;margin:0 0 4px}
 .ym-time{flex:none;margin-left:auto;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
 .ym-volume-wrap{position:relative;display:inline-flex;flex:none}
@@ -1799,7 +1799,7 @@ window.__ModuleLoader__.load({
         body.scrollTo({ top: Math.max(0, body.scrollTop + delta), behavior: 'smooth' });
       }, [active, lines.length]);
 
-      return h('div', { className: 'ym-lyrics-card', style, role: 'dialog', 'aria-label': t('lyrics') },
+      return h('div', { className: 'ym-lyrics-card', 'data-yandex-music-lyrics': '', style, role: 'dialog', 'aria-label': t('lyrics') },
         h('div', { className: 'ym-lyrics-head' },
           h('span', { className: 'ym-card-title' }, t('lyrics')),
           h('button', {
@@ -2328,12 +2328,19 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         if (!open) return undefined;
         const onKeyDown = (event) => {
-          if (event.key === 'Escape') setOpen(false);
+          if (event.key !== 'Escape') return;
+          // Escape peels one layer at a time: the lyrics window, then the popover.
+          if (player.lyricsOpen) {
+            player.lyricsOpen = false;
+            emit();
+            return;
+          }
+          setOpen(false);
         };
         const onPointerDown = (event) => {
           const node = buttonRef.current;
           if (node !== null && node.contains(event.target)) return;
-          if (event.target instanceof Element && event.target.closest('[data-yandex-music-card]') !== null) return;
+          if (event.target instanceof Element && event.target.closest('[data-yandex-music-card],[data-yandex-music-lyrics]') !== null) return;
           setOpen(false);
         };
         const onMove = () => place();
