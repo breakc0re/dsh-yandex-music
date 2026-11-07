@@ -31,12 +31,16 @@ import { stationCatalog, waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readAlbum, readArtist, readIdentity, readLyrics, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 import { readLyricsExternal } from './lib/lyrics.js';
+import { readCache, writeCache } from './lib/cache.js';
 import { readAmalgama } from './lib/amalgama.js';
 import { machineTranslate } from './lib/translate.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
 const MAX_BODY_BYTES = 8 * 1024;
+/** Cache budgets: playlists change often, the station catalogue almost never. */
+/** The station catalogue changes so rarely that a long cache is safe. */
+const CACHE_LONG = 6 * 60 * 60 * 1000;
 
 export const inject = ['webServer'];
 
@@ -465,6 +469,7 @@ export function apply(ctx) {
       const auth = await freshAuth();
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
       if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      // Not cached on purpose: every playlist write would have to invalidate it.
       const result = await listPlaylists(auth.accessToken, auth.uid);
       if (result === null) return fail(response, 502, 'upstream', 'playlists are unavailable');
       return sendJson(response, 200, { ok: true, value: result });
@@ -516,8 +521,13 @@ export function apply(ctx) {
       if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
       const auth = await freshAuth();
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const cached = await readCache(dir, 'stations', CACHE_LONG);
+      if (cached !== null) {
+        return sendJson(response, 200, { ok: true, value: { stations: Array.isArray(cached) ? cached : [] } });
+      }
       const result = await stationCatalog(auth.accessToken);
       if (result === null) return fail(response, 502, 'upstream', 'stations are unavailable');
+      await writeCache(dir, 'stations', result);
       return sendJson(response, 200, { ok: true, value: { stations: result } });
     },
 

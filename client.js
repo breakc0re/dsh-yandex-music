@@ -145,6 +145,7 @@ window.__ModuleLoader__.load({
       menuCopy: 'Скопировать ссылку',
       menuCopied: 'Ссылка скопирована',
       menuOpen: 'Открыть в Яндекс.Музыке',
+      recentSearches: 'Недавние запросы',
       unlike: 'Убрать из «Мне нравится»',
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
@@ -274,6 +275,7 @@ window.__ModuleLoader__.load({
       menuCopy: 'Copy link',
       menuCopied: 'Link copied',
       menuOpen: 'Open in Yandex Music',
+      recentSearches: 'Recent searches',
       unlike: 'Remove from liked tracks',
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
@@ -416,6 +418,7 @@ window.__ModuleLoader__.load({
 .ym-sticky-bar{position:sticky;top:var(--ym-tabs-h,38px);z-index:5;margin:0 -12px 0;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-section{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dsw-alias-label-secondary);margin:6px 0 -2px}
 .ym-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 4px;margin:0 -2px;scrollbar-width:thin}
+.ym-chips{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 2px}
 .ym-strip-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px 6px;justify-items:center;overflow:visible;margin:0;padding:2px 0 4px}
 .ym-chip{flex:none;width:72px;display:flex;flex-direction:column;gap:4px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ym-chip-cover{display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));transition:transform .14s ease,filter .14s ease}
@@ -3106,6 +3109,15 @@ window.__ModuleLoader__.load({
       const [error, setError] = React.useState('');
       const [tab, setTab] = React.useState('current');
       const [path, setPath] = React.useState([]);
+      const [history, setHistory] = React.useState(() => {
+        try {
+          const raw = window.localStorage.getItem('dsh-yandex-music.searches');
+          const list = raw === null ? [] : JSON.parse(raw);
+          return Array.isArray(list) ? list.filter((item) => typeof item === 'string').slice(0, 8) : [];
+        } catch {
+          return [];
+        }
+      });
       const [groups, setGroups] = React.useState({ artists: [], albums: [] });
       const state = usePlayer();
       const tabsRef = React.useRef(null);
@@ -3177,6 +3189,16 @@ window.__ModuleLoader__.load({
               albums: Array.isArray(value.albums) ? value.albums : [],
             });
             setError('');
+            // Remember the query once it actually produced something.
+            setHistory((previous) => {
+              const next = [trimmed, ...previous.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())].slice(0, 8);
+              try {
+                window.localStorage.setItem('dsh-yandex-music.searches', JSON.stringify(next));
+              } catch {
+                /* a blocked storage simply keeps the list in memory */
+              }
+              return next;
+            });
           } catch (failure) {
             if (cancelled) return;
             setTracks([]);
@@ -3285,6 +3307,18 @@ window.__ModuleLoader__.load({
             'aria-live': 'polite',
             title: searchStatus,
           }, searchStatus)),
+        query.trim() === '' && history.length > 0
+          ? h('div', null,
+            h('p', { className: 'ym-section' }, t('recentSearches')),
+            h('div', { className: 'ym-chips' }, history.map((item) => h('button', {
+              key: item,
+              className: 'ym-tab',
+              type: 'button',
+              style: { flex: 'none', padding: '4px 9px' },
+              title: item,
+              onClick: () => setQuery(item),
+            }, item))))
+          : null,
         artistChips.length > 0 ? h('p', { className: 'ym-section' }, t('artistsSection')) : null,
         artistChips.length > 0 ? h('div', { className: 'ym-strip' }, artistChips) : null,
         albumChips.length > 0 ? h('p', { className: 'ym-section' }, t('albumsSection')) : null,
