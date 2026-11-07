@@ -106,6 +106,7 @@ window.__ModuleLoader__.load({
       lyricsEstimated: 'без таймкодов',
       lyricsSource: 'Источник',
       lyricsSynced: 'синхронизировано',
+      uiFailed: 'Это окно сломалось — закройте и откройте попап',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -197,6 +198,7 @@ window.__ModuleLoader__.load({
       lyricsEstimated: 'no timecodes',
       lyricsSource: 'Source',
       lyricsSynced: 'synced',
+      uiFailed: 'This pane broke — close and reopen the popover',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -456,6 +458,31 @@ window.__ModuleLoader__.load({
     /* ------------------------------------------------------------------ */
     /* components                                                          */
     /* ------------------------------------------------------------------ */
+
+    /**
+     * A broken child must not take the popover — and the player bar inside it —
+     * down with it: an uncaught render error unmounts the whole tree while the
+     * <audio> element keeps playing, which looks like «the player vanished».
+     */
+    class Guard extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { failed: false };
+      }
+
+      static getDerivedStateFromError() {
+        return { failed: true };
+      }
+
+      componentDidCatch() {
+        /* the pane just shows the fallback; nothing else to do */
+      }
+
+      render() {
+        if (this.state.failed) return this.props.fallback ?? null;
+        return this.props.children;
+      }
+    }
 
     /** Decorative profile glyph for the account button in the card header. */
     function ProfileIcon({ size }) {
@@ -1695,7 +1722,7 @@ window.__ModuleLoader__.load({
       const state = usePlayer();
       const current = state.current;
       const currentId = current === null ? '' : String(current.id);
-      const [data, setData] = React.useState({ loading: true, error: '', lines: [] });
+      const [data, setData] = React.useState({ loading: true, error: '', lines: [], timed: [], source: '' });
       const bodyRef = React.useRef(null);
 
       React.useEffect(() => {
@@ -1732,8 +1759,8 @@ window.__ModuleLoader__.load({
         };
       }, [currentId]);
 
-      const lines = data.lines;
-      const timed = data.timed;
+      const lines = Array.isArray(data.lines) ? data.lines : [];
+      const timed = Array.isArray(data.timed) ? data.timed : [];
       const durationMs = state.duration > 0 ? state.duration * 1000 : (current === null ? 0 : current.durationMs);
       const positionMs = state.position * 1000;
 
@@ -2395,14 +2422,16 @@ window.__ModuleLoader__.load({
                   },
                 }, t('logout')))
               : null,
-            h('div', { className: 'ym-card-pane' }, h(PopoverBody, { t, auth })),
+            h('div', { className: 'ym-card-pane' },
+              h(Guard, { fallback: h('p', { className: 'ym-error', role: 'alert' }, t('uiFailed')) },
+                h(PopoverBody, { t, auth }))),
             h('div', { className: 'ym-card-player' }, h(PlayerBar, { t })))),
           document.body,
         )
         : null;
       const lyrics = open && anchor !== null && playback.lyricsOpen
         ? ReactDOM.createPortal(
-          h(LyricsCard, { t, style: lyricsPos, onClose: toggleLyrics }),
+          h(Guard, { fallback: null }, h(LyricsCard, { t, style: lyricsPos, onClose: toggleLyrics })),
           document.body,
         )
         : null;
