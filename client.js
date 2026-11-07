@@ -415,7 +415,7 @@ window.__ModuleLoader__.load({
 .ym-player-title{display:block;flex:1 1 auto;min-width:0;font-size:13px;font-weight:500;overflow:hidden}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
 .ym-controls{display:flex;align-items:center;gap:4px}
-.ym-controls .ym-icon-button{width:32px;height:32px}
+.ym-controls .ym-icon-button{width:34px;height:34px}
 .ym-icon-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:inherit;cursor:pointer}
 .ym-icon-button{transition:background .12s ease,color .12s ease,transform .1s ease}.ym-icon-button:hover{background:var(--dsw-alias-interactive-bg-hover)}.ym-icon-button:active{transform:scale(.94)}
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
@@ -423,8 +423,8 @@ window.__ModuleLoader__.load({
 .ym-spinner{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:ym-spin .7s linear infinite}
 @keyframes ym-spin{to{transform:rotate(360deg)}}
 .ym-seek{flex:1 1 auto;min-width:0;height:8px;margin:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 2px}
-.ym-seek-row .ym-icon-button{width:20px;height:20px}
+.ym-seek-row{display:flex;align-items:center;gap:6px;margin:0 0 4px}
+.ym-controls .ym-volume-wrap{margin-left:auto}
 .ym-time{flex:none;margin-left:0;font-size:10px;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
 .ym-volume-wrap{position:relative;display:inline-flex;flex:none}
@@ -1821,13 +1821,12 @@ window.__ModuleLoader__.load({
               onClick: () => addToQueue(state.tracks),
             }, '+')),
           editPanel,
-          h(StatusLine, {
-            text: state.error !== ''
-              ? state.error
-              : state.message !== '' ? state.message : !state.tracksLoading && rows.length === 0 ? t('playlistEmpty') : '',
-            error: state.error !== '',
-          }),
+          state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
+          state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
           state.tracksLoading && rows.length === 0 ? h(SkeletonRows, { count: 6 }) : null,
+          !state.tracksLoading && rows.length === 0 && state.error === ''
+            ? h('p', { className: 'ym-hint' }, t('playlistEmpty'))
+            : null,
           rows.length > 0
             ? h('p', { className: 'ym-section' }, `${t('tracksSection')} \u00b7 ${state.tracks.length}`)
             : null,
@@ -2355,7 +2354,7 @@ window.__ModuleLoader__.load({
           'aria-label': state.muted ? t('unmute') : t('mute'),
           title: state.muted ? t('unmute') : t('mute'),
           onClick: toggleMute,
-        }, h(VolumeIcon, { size: 15, muted: state.muted })),
+        }, h(VolumeIcon, { size: 17, muted: state.muted })),
         h('div', { className: 'ym-volume-pop', role: 'group', 'aria-label': t('volume') },
           h('div', { className: 'ym-volume-slot' },
             h('input', {
@@ -2384,8 +2383,7 @@ window.__ModuleLoader__.load({
             'aria-label': t('nowPlaying'),
             onChange: (event) => seekTo(Number(event.target.value)),
           }),
-          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`),
-          volumeControl),
+          h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
         h('div', { className: 'ym-controls' },
           h('button', {
             className: 'ym-icon-button',
@@ -2457,7 +2455,8 @@ window.__ModuleLoader__.load({
             title: t('lyrics'),
             'aria-pressed': state.lyricsOpen ? 'true' : 'false',
             onClick: toggleLyrics,
-          }, 'Aa')),
+          }, 'Aa'),
+          volumeControl),
         addOpen ? h(AddToPlaylist, { t, track: current, onClose: () => setAddOpen(false) }) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null);
     }
