@@ -76,6 +76,7 @@ window.__ModuleLoader__.load({
       waveLoading: 'Загружаем волну…',
       playbackFailed: 'Не удалось воспроизвести трек',
       idleHint: 'Ничего не играет',
+      archiveRow: 'View archive',
       remoteControl: 'Remote Control',
       deviceHint: 'Откройте ya.ru/device и введите код:',
       deviceWaiting: 'Ждём подтверждения на странице Яндекса…',
@@ -130,6 +131,7 @@ window.__ModuleLoader__.load({
       waveLoading: 'Loading the wave…',
       playbackFailed: 'Could not play this track',
       idleHint: 'Nothing is playing',
+      archiveRow: 'View archive',
       remoteControl: 'Remote Control',
       deviceHint: 'Open ya.ru/device and enter the code:',
       deviceWaiting: 'Waiting for confirmation on the Yandex page…',
@@ -151,27 +153,30 @@ window.__ModuleLoader__.load({
 .ym-entry-wrap{position:relative;display:flex;width:100%}
 .ym-entry-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:11px;cursor:pointer}
 .ym-entry-toggle:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
-.ym-mini{display:flex;flex-direction:column;gap:5px;padding:7px 8px;border-radius:10px;color:var(--dsw-alias-label-primary)}
+.ym-mini{display:flex;flex-direction:column;gap:7px;padding:10px 11px;border-radius:11px;color:var(--dsw-alias-label-primary)}
 .ym-mini:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-mini-top{display:flex;align-items:center;gap:8px;min-width:0}
 .ym-mini-open{display:flex;align-items:center;gap:8px;min-width:0;flex:1;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.ym-mini-cover{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;overflow:hidden;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.08));color:var(--dsw-alias-label-secondary)}
+.ym-mini-cover{flex:none;display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;overflow:hidden;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.08));color:var(--dsw-alias-label-secondary)}
 .ym-mini-cover img{width:100%;height:100%;object-fit:cover;display:block}
 .ym-mini-body{min-width:0;display:flex;flex-direction:column;gap:1px;flex:1}
-.ym-mini-title-line{overflow:hidden;white-space:nowrap;font-size:12px;line-height:1.35}
+.ym-mini-title-line{overflow:hidden;white-space:nowrap;font-size:13px;line-height:1.4;font-weight:500}
 .ym-mini-title-inner{display:inline-block;white-space:nowrap}
 .ym-mini-title-inner[data-scroll="true"]{animation:ym-marquee 16s linear infinite}
 .ym-mini-title-inner[data-scroll="true"]>span{padding-left:40px}
 @keyframes ym-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.ym-mini-artist{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ym-mini-artist{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ym-mini-controls{display:flex;align-items:center;gap:2px;flex:none}
-.ym-mini-button{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;cursor:pointer}
+.ym-mini-button{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1;cursor:pointer}
 .ym-mini-button:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .ym-mini-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-mini-progress{display:flex;align-items:center;gap:8px;padding:0 2px}
-.ym-mini-bar{position:relative;flex:1;height:3px;border-radius:2px;background:var(--dsw-alias-border-l1,rgba(255,255,255,.16));overflow:hidden;cursor:pointer}
+.ym-mini-bar{position:relative;flex:1;height:4px;border-radius:2px;background:var(--dsw-alias-border-l1,rgba(255,255,255,.16));overflow:hidden;cursor:pointer}
 .ym-mini-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--dsw-alias-bg-accent,#3b6fe0)}
-.ym-mini-time{flex:none;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.ym-mini-time{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+/* «View archive» lives in the More menu now; its own dialog stays mounted and
+   is still driven by this button, which is why it is hidden rather than removed. */
+[data-slot="sidebar.footer.action"] .aav-footerBtn{display:none !important}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card{position:fixed;z-index:60;box-sizing:border-box;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-base,#1b1b1b);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--dsw-alias-label-primary);font-size:13px}
@@ -1377,6 +1382,55 @@ window.__ModuleLoader__.load({
       h('path', { d: 'M11 18h2' }));
     }
 
+    /** Decorative archive box for the relocated View archive row. */
+    function ArchiveIcon({ size }) {
+      return h('svg', {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+      },
+      h('rect', { x: 3, y: 4, width: 18, height: 5, rx: 1.5 }),
+      h('path', { d: 'M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9' }),
+      h('path', { d: 'M10 13h4' }));
+    }
+
+    /**
+     * «View archive» moved into the More menu.
+     *
+     * That plugin opens its own `<dialog>` and exposes no service, so the entry
+     * cannot be replaced — only hidden and clicked. Its trigger stays mounted
+     * (hidden by CSS) and the dialog itself is centred, not anchored, so the
+     * click from here behaves exactly like the original row.
+     */
+    function ArchiveMenuRow({ t, onDismiss }) {
+      const [available, setAvailable] = React.useState(false);
+
+      React.useEffect(() => {
+        const timer = window.setTimeout(() => {
+          setAvailable(document.querySelector('[data-slot="sidebar.footer.action"] .aav-footerBtn') !== null);
+        }, 0);
+        return () => window.clearTimeout(timer);
+      }, []);
+
+      if (!available) return null;
+
+      return h(primitives.MenuItemButton, {
+        icon: h(ArchiveIcon, { size: 16 }),
+        separatorBefore: true,
+        onSelect: () => {
+          onDismiss();
+          const button = document.querySelector('[data-slot="sidebar.footer.action"] .aav-footerBtn');
+          if (button instanceof HTMLElement) button.click();
+        },
+      }, t('archiveRow'));
+    }
+
     /**
      * Remote Control, relocated from the sidebar footer into the More menu.
      * The bridge's own footer entry is shadowed, so this row is the only way in;
@@ -1410,7 +1464,7 @@ window.__ModuleLoader__.load({
         ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
           name: 'sidebar.footer.action',
           id: 'yandex-music',
-          order: 26,
+          order: 1000,
           locale: NS,
           label: () => t('entry'),
         }, MusicEntry));
@@ -1445,6 +1499,12 @@ window.__ModuleLoader__.load({
           locale: NS,
           inject: () => ({ openRemote }),
         }, RemoteMenuRow));
+
+        ctx.slots.inject('sidebar.panellist.actions', () => ctx.slots.register({
+          name: 'sidebar.panellist.actions',
+          id: 'yandex-music-archive',
+          locale: NS,
+        }, ArchiveMenuRow));
       },
     };
   },
