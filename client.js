@@ -54,6 +54,7 @@ window.__ModuleLoader__.load({
       submit: 'Подтвердить',
       submitting: 'Проверяем код…',
       signedIn: 'Вы вошли как',
+      account: 'Аккаунт',
       noPlus: 'Без Яндекс Плюса доступны только 30-секундные превью.',
       logout: 'Выйти',
       searchPlaceholder: 'Найти трек или исполнителя',
@@ -110,6 +111,7 @@ window.__ModuleLoader__.load({
       submit: 'Confirm',
       submitting: 'Checking the code…',
       signedIn: 'Signed in as',
+      account: 'Account',
       noPlus: 'Without Yandex Plus only 30-second previews are available.',
       logout: 'Sign out',
       searchPlaceholder: 'Find a track or artist',
@@ -182,14 +184,17 @@ window.__ModuleLoader__.load({
 [data-slot="sidebar.footer.action"] .aav-footerBtn{display:none !important}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:380px;height:380px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:#17171a}
+.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:380px;height:380px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:rgba(18,18,21,.82);backdrop-filter:blur(6px)}
 .ym-card-bg{position:absolute;inset:-12%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(14px) saturate(1.2);opacity:.95;pointer-events:none;transform:scale(1.08)}
-.ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,12,.30) 0%,rgba(10,10,12,.58) 58%,rgba(10,10,12,.88) 100%)}
+.ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,12,.16) 0%,rgba(10,10,12,.42) 58%,rgba(10,10,12,.74) 100%)}
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;flex:none}
 .ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card-pane{flex:1;min-height:0;overflow-y:auto;padding:0 12px 8px}
 .ym-card-player{flex:none;padding:8px 12px 11px;border-top:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.22)}
+.ym-head-actions{display:flex;align-items:center;gap:2px;flex:none}
+.ym-account{position:absolute;top:46px;right:10px;z-index:5;min-width:210px;max-width:260px;padding:11px;border-radius:11px;background:rgba(18,18,22,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.ym-account-name{font-size:12px;line-height:1.45;margin:0 0 9px;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 .ym-card-close{border:0;background:transparent;color:inherit;cursor:pointer;padding:2px 6px;border-radius:6px;font-size:16px;line-height:1}
 .ym-card-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-form{display:flex;flex-direction:column;gap:8px}
@@ -309,9 +314,46 @@ window.__ModuleLoader__.load({
       return navigation.available;
     }
 
+    /** Auth state for the popover: the header and the body share one status. */
+    function useAuth() {
+      const [state, setState] = React.useState({ loading: true, status: null, error: '' });
+
+      const reload = React.useCallback(async () => {
+        try {
+          const status = await call('auth/status');
+          setState({ loading: false, status, error: '' });
+        } catch (failure) {
+          setState({ loading: false, status: null, error: failure.message || 'request failed' });
+        }
+      }, []);
+
+      React.useEffect(() => {
+        void reload();
+      }, [reload]);
+
+      return { ...state, reload };
+    }
+
     /* ------------------------------------------------------------------ */
     /* components                                                          */
     /* ------------------------------------------------------------------ */
+
+    /** Decorative profile glyph for the account button in the card header. */
+    function ProfileIcon({ size }) {
+      return h('svg', {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.6,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+      },
+      h('circle', { cx: 12, cy: 8.5, r: 3.5 }),
+      h('path', { d: 'M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6' }));
+    }
 
     /** Decorative music note; the sidebar owns the accessible name. */
     function NoteIcon({ size }) {
@@ -496,41 +538,6 @@ window.__ModuleLoader__.load({
 
 
     /** Signed-in summary with a way out. */
-    function AccountScreen({ t, status, onSignedOut }) {
-      const [busy, setBusy] = React.useState(false);
-      const [error, setError] = React.useState('');
-
-      const logout = async () => {
-        if (busy) return;
-        setBusy(true);
-        setError('');
-        try {
-          await call('auth/logout', {});
-          await onSignedOut();
-        } catch (failure) {
-          setError(failure.message || t('errorGeneric'));
-        } finally {
-          setBusy(false);
-        }
-      };
-
-      return h('div', { className: 'ym-form' },
-        h('p', { className: 'ym-hint' }, `${t('signedIn')} ${status.login !== '' ? status.login : status.uid ?? '—'}`),
-        status.plus === false ? h('p', { className: 'ym-hint' }, t('noPlus')) : null,
-        error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
-        h('button', {
-          className: 'ym-button',
-          'data-variant': 'ghost',
-          type: 'button',
-          disabled: busy,
-          onClick: logout,
-        }, t('logout')));
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* player                                                              */
-    /* ------------------------------------------------------------------ */
-
     /**
      * Playback state lives outside React on purpose: the popover unmounts when
      * it closes, and an <audio> owned by the component tree would stop the music.
@@ -1081,7 +1088,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Search field, result rows, and the transport for whatever is playing. */
-    function SearchScreen({ t, status, onSignedOut }) {
+    function SearchScreen({ t, status }) {
       const [query, setQuery] = React.useState('');
       const [tracks, setTracks] = React.useState([]);
       const [busy, setBusy] = React.useState(false);
@@ -1192,38 +1199,20 @@ window.__ModuleLoader__.load({
             'data-active': tab === 'wave' ? 'true' : 'false',
             onClick: () => setTab('wave'),
           }, t('tabWave'))),
-        tab === 'wave' ? wavePane : tab === 'playlists' ? h(PlaylistsPane, { t }) : searchPane,
-        h(AccountScreen, { t, status, onSignedOut }));
+        tab === 'wave' ? wavePane : tab === 'playlists' ? h(PlaylistsPane, { t }) : searchPane);
     }
 
     /** Auth state machine for the popover body. */
-    function PopoverBody({ t }) {
-      const [state, setState] = React.useState({ loading: true, status: null, error: '' });
-
-      // `t` is intentionally not a dependency: the locale binding may hand out a
-      // fresh function per render, and a fetch loop is worse than a stale label.
-      const reload = React.useCallback(async () => {
-        try {
-          const status = await call('auth/status');
-          setState({ loading: false, status, error: '' });
-        } catch (failure) {
-          setState({ loading: false, status: null, error: failure.message || 'request failed' });
-        }
-      }, []);
-
-      React.useEffect(() => {
-        reload();
-      }, [reload]);
-
-      if (state.loading) return h('p', { className: 'ym-hint' }, t('loading'));
-      if (state.status === null) {
+    function PopoverBody({ t, auth }) {
+      if (auth.loading) return h('p', { className: 'ym-hint' }, t('loading'));
+      if (auth.status === null) {
         return h('div', { className: 'ym-form' },
-          h('p', { className: 'ym-error', role: 'alert' }, state.error),
-          h('button', { className: 'ym-button', type: 'button', onClick: reload }, t('retry')));
+          h('p', { className: 'ym-error', role: 'alert' }, auth.error),
+          h('button', { className: 'ym-button', type: 'button', onClick: auth.reload }, t('retry')));
       }
-      if (!state.status.configured) return h(SetupScreen, { t, onSaved: reload });
-      if (!state.status.authorized) return h(DeviceScreen, { t, onSignedIn: reload });
-      return h(SearchScreen, { t, status: state.status, onSignedOut: reload });
+      if (!auth.status.configured) return h(SetupScreen, { t, onSaved: auth.reload });
+      if (!auth.status.authorized) return h(DeviceScreen, { t, onSignedIn: auth.reload });
+      return h(SearchScreen, { t, status: auth.status });
     }
 
     /**
@@ -1260,6 +1249,14 @@ window.__ModuleLoader__.load({
       const buttonRef = React.useRef(null);
       const playback = usePlayer();
       const current = playback.current;
+      const auth = useAuth();
+      const [accountOpen, setAccountOpen] = React.useState(false);
+
+      // The account panel belongs to the open card; closing it must not leave a
+      // floating menu behind for the next time the card is opened.
+      React.useEffect(() => {
+        if (!open) setAccountOpen(false);
+      }, [open]);
 
       const place = React.useCallback(() => {
         const node = buttonRef.current;
@@ -1323,13 +1320,45 @@ window.__ModuleLoader__.load({
           h('div', { className: 'ym-card-inner' },
             h('div', { className: 'ym-card-head' },
               h('span', { className: 'ym-card-title' }, t('title')),
-              h('button', {
-                type: 'button',
-                className: 'ym-card-close',
-                'aria-label': t('close'),
-                onClick: () => setOpen(false),
-              }, '\u00d7')),
-            h('div', { className: 'ym-card-pane' }, h(PopoverBody, { t })),
+              h('span', { className: 'ym-head-actions' },
+                auth.status !== null && auth.status.authorized
+                  ? h('button', {
+                    type: 'button',
+                    className: 'ym-card-close',
+                    'aria-label': t('account'),
+                    title: auth.status.login !== '' ? auth.status.login : t('account'),
+                    'aria-expanded': accountOpen ? 'true' : 'false',
+                    onClick: () => setAccountOpen((value) => !value),
+                  }, h(ProfileIcon, { size: 15 }))
+                  : null,
+                h('button', {
+                  type: 'button',
+                  className: 'ym-card-close',
+                  'aria-label': t('close'),
+                  onClick: () => setOpen(false),
+                }, '\u00d7'))),
+            accountOpen && auth.status !== null && auth.status.authorized
+              ? h('div', { className: 'ym-account', role: 'dialog', 'aria-label': t('account') },
+                h('p', { className: 'ym-account-name' },
+                  `${t('signedIn')} ${auth.status.login !== '' ? auth.status.login : auth.status.uid ?? '—'}`),
+                h('button', {
+                  className: 'ym-button',
+                  'data-variant': 'ghost',
+                  type: 'button',
+                  onClick: () => {
+                    void (async () => {
+                      try {
+                        await call('auth/logout', {});
+                      } catch {
+                        /* the session is gone either way */
+                      }
+                      setAccountOpen(false);
+                      await auth.reload();
+                    })();
+                  },
+                }, t('logout')))
+              : null,
+            h('div', { className: 'ym-card-pane' }, h(PopoverBody, { t, auth })),
             h('div', { className: 'ym-card-player' }, h(PlayerBar, { t })))),
           document.body,
         )
