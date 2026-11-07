@@ -75,6 +75,7 @@ window.__ModuleLoader__.load({
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
       playbackFailed: 'Не удалось воспроизвести трек',
+      idleHint: 'Ничего не играет',
       remoteControl: 'Remote Control',
       deviceHint: 'Откройте ya.ru/device и введите код:',
       deviceWaiting: 'Ждём подтверждения на странице Яндекса…',
@@ -128,6 +129,7 @@ window.__ModuleLoader__.load({
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
       playbackFailed: 'Could not play this track',
+      idleHint: 'Nothing is playing',
       remoteControl: 'Remote Control',
       deviceHint: 'Open ya.ru/device and enter the code:',
       deviceWaiting: 'Waiting for confirmation on the Yandex page…',
@@ -149,6 +151,27 @@ window.__ModuleLoader__.load({
 .ym-entry-wrap{position:relative;display:flex;width:100%}
 .ym-entry-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:11px;cursor:pointer}
 .ym-entry-toggle:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.ym-mini{display:flex;flex-direction:column;gap:5px;padding:7px 8px;border-radius:10px;color:var(--dsw-alias-label-primary)}
+.ym-mini:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-mini-top{display:flex;align-items:center;gap:8px;min-width:0}
+.ym-mini-open{display:flex;align-items:center;gap:8px;min-width:0;flex:1;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ym-mini-cover{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;overflow:hidden;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.08));color:var(--dsw-alias-label-secondary)}
+.ym-mini-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.ym-mini-body{min-width:0;display:flex;flex-direction:column;gap:1px;flex:1}
+.ym-mini-title-line{overflow:hidden;white-space:nowrap;font-size:12px;line-height:1.35}
+.ym-mini-title-inner{display:inline-block;white-space:nowrap}
+.ym-mini-title-inner[data-scroll="true"]{animation:ym-marquee 16s linear infinite}
+.ym-mini-title-inner[data-scroll="true"]>span{padding-left:40px}
+@keyframes ym-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ym-mini-artist{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ym-mini-controls{display:flex;align-items:center;gap:2px;flex:none}
+.ym-mini-button{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;cursor:pointer}
+.ym-mini-button:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.ym-mini-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
+.ym-mini-progress{display:flex;align-items:center;gap:8px;padding:0 2px}
+.ym-mini-bar{position:relative;flex:1;height:3px;border-radius:2px;background:var(--dsw-alias-border-l1,rgba(255,255,255,.16));overflow:hidden;cursor:pointer}
+.ym-mini-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--dsw-alias-bg-accent,#3b6fe0)}
+.ym-mini-time{flex:none;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card{position:fixed;z-index:60;box-sizing:border-box;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-base,#1b1b1b);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));box-shadow:0 12px 32px rgba(0,0,0,.45);color:var(--dsw-alias-label-primary);font-size:13px}
@@ -1140,6 +1163,29 @@ window.__ModuleLoader__.load({
      * rail button when collapsed. The popover is portalled so the sidebar's
      * scroll container cannot clip it.
      */
+    /**
+     * One-line track title that scrolls only while it actually overflows, so a
+     * short name stays still instead of drifting for no reason.
+     */
+    function Marquee({ text }) {
+      const boxRef = React.useRef(null);
+      const [scroll, setScroll] = React.useState(false);
+
+      React.useEffect(() => {
+        const node = boxRef.current;
+        if (node === null) {
+          setScroll(false);
+          return;
+        }
+        setScroll(node.scrollWidth > node.clientWidth + 2);
+      }, [text]);
+
+      return h('span', { className: 'ym-mini-title-line', ref: boxRef },
+        h('span', { className: 'ym-mini-title-inner', 'data-scroll': scroll ? 'true' : 'false' },
+          text,
+          scroll ? h('span', { 'aria-hidden': 'true' }, text) : null));
+    }
+
     function MusicEntry({ wide, t }) {
       const [open, setOpen] = React.useState(false);
       const [anchor, setAnchor] = React.useState(null);
@@ -1212,35 +1258,100 @@ window.__ModuleLoader__.load({
         )
         : null;
 
-      return h(React.Fragment, null,
-        h('div', { className: 'ym-entry-wrap' },
+      const cover = current !== null && typeof current.cover === 'string' ? current.cover : null;
+      const durationMs = playback.duration > 0
+        ? playback.duration * 1000
+        : current !== null ? current.durationMs : 0;
+      const progress = durationMs > 0
+        ? Math.min(100, Math.max(0, (playback.position * 1000 / durationMs) * 100))
+        : 0;
+
+      // Collapsed rail: no room for a transport, so the icon opens the popover.
+      if (!wide) {
+        return h(React.Fragment, null,
           h('button', {
             ref: buttonRef,
             type: 'button',
             className: 'ym-entry',
-            'data-rail': wide ? 'false' : 'true',
-            'data-playing': current !== null ? 'true' : 'false',
-            title: wide ? undefined : (current !== null ? current.title : t('entry')),
+            'data-rail': 'true',
+            title: current !== null ? `${current.title} — ${current.artists}` : t('entry'),
             'aria-label': t('entry'),
             'aria-haspopup': 'dialog',
             'aria-expanded': open ? 'true' : 'false',
             onClick: toggle,
-          },
-          h('span', { className: 'ym-entry-icon', 'aria-hidden': 'true' }, h(NoteIcon, { size: 16 })),
-          wide
-            ? h('span', { className: 'ym-entry-label' }, current !== null ? current.title : t('entry'))
-            : null),
-          wide && current !== null
-            ? h('button', {
+          }, h('span', { className: 'ym-entry-icon', 'aria-hidden': 'true' }, h(NoteIcon, { size: 18 }))),
+          card);
+      }
+
+      return h(React.Fragment, null,
+        h('div', { className: 'ym-mini', 'data-playing': current !== null ? 'true' : 'false' },
+          h('div', { className: 'ym-mini-top' },
+            h('button', {
+              ref: buttonRef,
               type: 'button',
-              className: 'ym-entry-toggle',
-              'aria-label': playback.playing ? t('pause') : t('play'),
-              title: playback.playing ? t('pause') : t('play'),
-              onClick: (event) => {
-                event.stopPropagation();
-                togglePlay();
-              },
-            }, playback.playing ? '\u23f8' : '\u25b6')
+              className: 'ym-mini-open',
+              'aria-label': t('entry'),
+              'aria-haspopup': 'dialog',
+              'aria-expanded': open ? 'true' : 'false',
+              onClick: toggle,
+            },
+            h('span', { className: 'ym-mini-cover' },
+              cover !== null ? h('img', { src: cover, alt: '', loading: 'lazy' }) : h(NoteIcon, { size: 18 })),
+            h('span', { className: 'ym-mini-body' },
+              h(Marquee, { text: current !== null ? current.title : t('entry') }),
+              h('span', { className: 'ym-mini-artist' }, current !== null ? current.artists : t('idleHint')))),
+            h('span', { className: 'ym-mini-controls' },
+              h('button', {
+                className: 'ym-mini-button',
+                type: 'button',
+                disabled: current === null,
+                'aria-label': t('prev'),
+                title: t('prev'),
+                onClick: (event) => {
+                  event.stopPropagation();
+                  void step(-1);
+                },
+              }, '\u23ee'),
+              h('button', {
+                className: 'ym-mini-button',
+                type: 'button',
+                'data-primary': 'true',
+                disabled: current === null,
+                'aria-label': playback.playing ? t('pause') : t('play'),
+                title: playback.playing ? t('pause') : t('play'),
+                onClick: (event) => {
+                  event.stopPropagation();
+                  togglePlay();
+                },
+              }, playback.playing ? '\u23f8' : '\u25b6'),
+              h('button', {
+                className: 'ym-mini-button',
+                type: 'button',
+                disabled: current === null,
+                'aria-label': t('next'),
+                title: t('next'),
+                onClick: (event) => {
+                  event.stopPropagation();
+                  void step(1);
+                },
+              }, '\u23ed'))),
+          current !== null
+            ? h('div', { className: 'ym-mini-progress' },
+              h('div', {
+                className: 'ym-mini-bar',
+                role: 'progressbar',
+                'aria-label': t('nowPlaying'),
+                'aria-valuenow': Math.round(progress),
+                'aria-valuemin': 0,
+                'aria-valuemax': 100,
+                onClick: (event) => {
+                  const box = event.currentTarget.getBoundingClientRect();
+                  if (box.width > 0 && durationMs > 0) {
+                    seekTo(((event.clientX - box.left) / box.width) * (durationMs / 1000));
+                  }
+                },
+              }, h('span', { className: 'ym-mini-bar-fill', style: { width: `${progress}%` } })),
+              h('span', { className: 'ym-mini-time' }, `${fmtTime(playback.position * 1000)} / ${fmtTime(durationMs)}`))
             : null),
         card);
     }
