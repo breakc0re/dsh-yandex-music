@@ -323,14 +323,16 @@ window.__ModuleLoader__.load({
     function AuthBody({ t }) {
       const [state, setState] = React.useState({ loading: true, status: null, error: '' });
 
+      // `t` is intentionally not a dependency: the locale binding may hand out a
+      // fresh function per render, and a fetch loop is worse than a stale label.
       const reload = React.useCallback(async () => {
         try {
           const status = await call('auth/status');
           setState({ loading: false, status, error: '' });
         } catch (failure) {
-          setState({ loading: false, status: null, error: failure.message || t('errorGeneric') });
+          setState({ loading: false, status: null, error: failure.message || 'request failed' });
         }
-      }, [t]);
+      }, []);
 
       React.useEffect(() => {
         reload();

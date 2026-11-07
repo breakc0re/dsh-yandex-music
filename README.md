@@ -77,6 +77,22 @@ PKCE-верификатор держатся в памяти хоста, поэ�
 После `pnpm install` хост подхватывает патч на лету, клиентский бандл
 подтягивается через модульный граф (`/plugins/dsh-yandex-music/client.js`).
 
+### Разработка
+
+`pnpm` с `nodeLinker: hoisted` копирует `file:`-зависимость в `node_modules`,
+поэтому правки в исходниках не видны без повторного `pnpm install`. Для
+итераций каталог заменён junction-ссылкой на исходники:
+
+```powershell
+Remove-Item "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-yandex-music" -Recurse -Force
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-yandex-music" `
+  -Target "C:\Users\breakc0re\Desktop\Нейросети\Plugins\dsh-yandex-music"
+```
+
+Следующий `pnpm install` заменит junction обычной копией — после него ссылку
+нужно создать заново.
+
 ## Ограничения
 
 - OAuth-приложение регистрирует пользователь: плагин не может создать клиента
