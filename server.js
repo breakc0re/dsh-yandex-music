@@ -15,7 +15,7 @@ import {
   refreshAccessToken,
 } from './lib/oauth.js';
 import { MUSIC_CLIENT_ID, MUSIC_CLIENT_SECRET, pollDeviceToken, requestDeviceCode } from './lib/device.js';
-import { listPlaylists, readPlaylist, setTrackLike } from './lib/playlists.js';
+import { addTrackToPlaylist, createPlaylist, listPlaylists, readPlaylist, setTrackLike } from './lib/playlists.js';
 import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
@@ -218,6 +218,35 @@ export function apply(ctx) {
       return sendJson(response, 200, { ok: true, value: result });
     },
 
+    'music/playlist/create': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const title = text(String(body.title ?? ''), 120);
+      if (title === '') return fail(response, 400, 'title', 'title is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const created = await createPlaylist(auth.accessToken, auth.uid, title);
+      if (created === null) return fail(response, 502, 'upstream', 'playlist was not created');
+      return sendJson(response, 200, { ok: true, value: created });
+    },
+
+    'music/playlist/insert': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const kind = Number(String(body.kind ?? ''));
+      const trackId = text(String(body.trackId ?? ''), 32);
+      if (!Number.isInteger(kind) || kind < 0) return fail(response, 400, 'kind', 'kind is required');
+      if (!/^\d+$/u.test(trackId)) return fail(response, 400, 'track', 'trackId is required');
+      const albumRaw = String(body.albumId ?? '');
+      const albumId = /^\d+$/u.test(albumRaw) ? albumRaw : null;
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const result = await addTrackToPlaylist(auth.accessToken, auth.uid, kind, trackId, albumId);
+      if (result.ok !== true) return fail(response, 502, result.reason ?? 'change', 'the playlist rejected the change');
+      return sendJson(response, 200, { ok: true, value: { revision: result.revision } });
+    },
     'music/playlists': async (request, response) => {
       if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
       const auth = await freshAuth();

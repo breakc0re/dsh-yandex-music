@@ -71,7 +71,19 @@ window.__ModuleLoader__.load({
       tabSearch: 'Поиск',
       tabWave: 'Волна',
       tabPlaylists: 'Плейлисты',
-      back: 'Назад',
+      tabQueue: 'Очередь',
+      addToPlaylist: 'В плейлист',
+      newPlaylistPlaceholder: 'Название нового плейлиста',
+      createPlaylist: 'Создать',
+      noPlaylists: 'Плейлистов пока нет',
+      addedToPlaylist: 'Добавлено',      shuffle: 'Перемешать',
+      repeatOff: 'Повтор выключен',
+      repeatAll: 'Повтор очереди',
+      repeatOne: 'Повтор трека',
+      clearQueue: 'Очистить очередь',
+      moveUp: 'Выше',
+      moveDown: 'Ниже',
+      removeRow: 'Убрать из очереди',      back: 'Назад',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -128,7 +140,19 @@ window.__ModuleLoader__.load({
       tabSearch: 'Search',
       tabWave: 'My Wave',
       tabPlaylists: 'Playlists',
-      back: 'Back',
+      tabQueue: 'Queue',
+      addToPlaylist: 'Add to playlist',
+      newPlaylistPlaceholder: 'New playlist name',
+      createPlaylist: 'Create',
+      noPlaylists: 'No playlists yet',
+      addedToPlaylist: 'Added',      shuffle: 'Shuffle',
+      repeatOff: 'Repeat off',
+      repeatAll: 'Repeat queue',
+      repeatOne: 'Repeat one',
+      clearQueue: 'Clear queue',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      removeRow: 'Remove from queue',      back: 'Back',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -210,7 +234,20 @@ window.__ModuleLoader__.load({
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
 .ym-code{font-variant-numeric:tabular-nums}
-.ym-tabs{display:flex;gap:4px;margin-bottom:8px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.ym-add{position:absolute;bottom:calc(100% + 6px);right:0;left:0;z-index:6;padding:10px;border-radius:11px;background:rgba(16,16,20,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 12px 30px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:7px;max-height:250px}
+.ym-add-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ym-add-title{font-size:12px;font-weight:600}
+.ym-add-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.ym-add-create{display:flex;gap:6px;align-items:center}
+.ym-add-create .ym-input{flex:1;min-width:0}.ym-queue-head{display:flex;align-items:center;gap:4px;margin-bottom:2px}
+.ym-queue-row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:8px;border:1px dashed transparent}
+.ym-queue-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.ym-queue-row[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
+.ym-queue-row[data-over="true"]{border-color:var(--dsw-alias-border-accent,#3b6fe0)}
+.ym-queue-grip{flex:none;width:10px;cursor:grab;color:var(--dsw-alias-label-secondary);font-size:11px;line-height:1;opacity:.65}
+.ym-queue-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ym-queue-actions{display:flex;align-items:center;gap:1px;flex:none}
+.ym-mini-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}.ym-tabs{display:flex;gap:4px;margin-bottom:8px}.ym-tab{font-size:11px}.ym-playlist-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
 .ym-tab{flex:1;padding:5px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
 .ym-tab:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-tab[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover));color:var(--dsw-alias-label-primary)}
@@ -226,7 +263,7 @@ window.__ModuleLoader__.load({
 .ym-result-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-result-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary);font-size:11px}
 .ym-result-time{margin-left:auto;flex:none;color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums}
-.ym-player{margin-top:0;padding-top:0;border-top:0}
+.ym-player{margin-top:0;padding-top:0;border-top:0;position:relative}
 .ym-player-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ym-player-title{min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-badge{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.16));color:var(--dsw-alias-label-secondary)}
@@ -552,6 +589,7 @@ window.__ModuleLoader__.load({
       position: 0,
       duration: 0,
       error: '',
+      repeat: 'off',
       listeners: new Set(),
     };
 
@@ -819,7 +857,7 @@ window.__ModuleLoader__.load({
       return start;
     }
 
-    /** Next track, growing the wave queue first when the current batch is spent. */
+    /** Next track: wave batches first, then the repeat mode decides the rest. */
     async function advance() {
       if (waveSession.active && player.index >= player.queue.length - 1) {
         try {
@@ -832,7 +870,115 @@ window.__ModuleLoader__.load({
           /* fall through to the ordinary path */
         }
       }
-      await step(1);
+      if (player.repeat === "one") {
+        await playAt(player.index);
+        return;
+      }
+      const next = player.index + 1;
+      if (next < player.queue.length) {
+        await playAt(next);
+        return;
+      }
+      if (player.repeat === "all" && player.queue.length > 0) {
+        await playAt(0);
+        return;
+      }
+      player.playing = false;
+      emit();
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* queue editing                                                       */
+    /* ------------------------------------------------------------------ */
+
+    /** Move one row; the playing index follows its track, not its position. */
+    function moveInQueue(from, to) {
+      if (from === to) return;
+      if (from < 0 || to < 0 || from >= player.queue.length || to >= player.queue.length) return;
+      const queue = player.queue.slice();
+      const [item] = queue.splice(from, 1);
+      queue.splice(to, 0, item);
+      player.queue = queue;
+      if (player.index === from) player.index = to;
+      else if (from < player.index && to >= player.index) player.index -= 1;
+      else if (from > player.index && to <= player.index) player.index += 1;
+      emit();
+    }
+
+    function removeFromQueue(index) {
+      if (index < 0 || index >= player.queue.length) return;
+      const queue = player.queue.slice();
+      queue.splice(index, 1);
+      player.queue = queue;
+      if (index === player.index) {
+        if (queue.length === 0) {
+          player.current = null;
+          player.index = -1;
+          player.playing = false;
+          const audio = player.audio;
+          if (audio !== null) {
+            try {
+              audio.pause();
+              audio.removeAttribute("src");
+            } catch {
+              /* ignore */
+            }
+          }
+          emit();
+          return;
+        }
+        void playAt(Math.min(index, queue.length - 1));
+        return;
+      }
+      if (index < player.index) player.index -= 1;
+      emit();
+    }
+
+    function clearQueue() {
+      waveSession.active = false;
+      player.queue = [];
+      player.index = -1;
+      player.current = null;
+      player.playing = false;
+      player.position = 0;
+      player.duration = 0;
+      const audio = player.audio;
+      if (audio !== null) {
+        try {
+          audio.pause();
+          audio.removeAttribute("src");
+        } catch {
+          /* ignore */
+        }
+      }
+      emit();
+    }
+
+    /** Insert right after the playing track — the «play next» action. */
+    function playNextInQueue(track) {
+      const at = player.index < 0 ? player.queue.length : player.index + 1;
+      const queue = player.queue.slice();
+      queue.splice(at, 0, track);
+      player.queue = queue;
+      emit();
+    }
+
+    /** Shuffle only what is still ahead, so the current track keeps playing. */
+    function shuffleUpcoming() {
+      const tail = player.queue.slice(player.index + 1);
+      for (let i = tail.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const swap = tail[i];
+        tail[i] = tail[j];
+        tail[j] = swap;
+      }
+      player.queue = player.queue.slice(0, player.index + 1).concat(tail);
+      emit();
+    }
+
+    function cycleRepeat() {
+      player.repeat = player.repeat === "off" ? "all" : player.repeat === "all" ? "one" : "off";
+      emit();
     }
 
     /* ------------------------------------------------------------------ */
@@ -1005,12 +1151,215 @@ window.__ModuleLoader__.load({
       return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
     }
 
+    /** Queue editor: reorder by drag or arrows, remove, and jump to a track. */
+    function QueuePane({ t }) {
+      const state = usePlayer();
+      const [dragFrom, setDragFrom] = React.useState(-1);
+      const [dragOver, setDragOver] = React.useState(-1);
+
+      const repeatLabel = state.repeat === 'one'
+        ? t('repeatOne')
+        : state.repeat === 'all' ? t('repeatAll') : t('repeatOff');
+
+      const header = h('div', { className: 'ym-queue-head' },
+        h('span', { className: 'ym-playlist-title' }, `${t('tabQueue')} · ${state.queue.length}`),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('shuffle'),
+          title: t('shuffle'),
+          disabled: state.queue.length < 2,
+          onClick: shuffleUpcoming,
+        }, '\u21c4'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'data-on': state.repeat !== 'off' ? 'true' : 'false',
+          'aria-label': repeatLabel,
+          title: repeatLabel,
+          onClick: cycleRepeat,
+        }, state.repeat === 'one' ? '\u21b9' : '\u21bb'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('clearQueue'),
+          title: t('clearQueue'),
+          disabled: state.queue.length === 0,
+          onClick: clearQueue,
+        }, '\u2715'));
+
+      if (state.queue.length === 0) {
+        return h('div', { className: 'ym-form' }, header, h('p', { className: 'ym-hint' }, t('queueEmpty')));
+      }
+
+      const rows = state.queue.map((track, index) => h('div', {
+        key: `${track.id}-${index}`,
+        className: 'ym-queue-row',
+        'data-active': state.index === index ? 'true' : 'false',
+        'data-over': dragOver === index ? 'true' : 'false',
+        draggable: true,
+        onDragStart: () => setDragFrom(index),
+        onDragOver: (event) => {
+          event.preventDefault();
+          setDragOver(index);
+        },
+        onDragLeave: () => setDragOver(-1),
+        onDrop: (event) => {
+          event.preventDefault();
+          if (dragFrom >= 0) moveInQueue(dragFrom, index);
+          setDragFrom(-1);
+          setDragOver(-1);
+        },
+        onDragEnd: () => {
+          setDragFrom(-1);
+          setDragOver(-1);
+        },
+      },
+      h('span', { className: 'ym-queue-grip', 'aria-hidden': 'true' }, '\u2261'),
+      h('button', {
+        type: 'button',
+        className: 'ym-queue-open',
+        onClick: () => {
+          void playAt(index);
+        },
+      },
+      track.cover !== null
+        ? h('img', { className: 'ym-result-cover', src: track.cover, alt: '', loading: 'lazy' })
+        : h('span', { className: 'ym-result-cover' }),
+      h('span', { className: 'ym-result-text' },
+        h('span', { className: 'ym-result-title' }, track.title),
+        h('span', { className: 'ym-result-sub' }, track.artists))),
+      h('span', { className: 'ym-queue-actions' },
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('moveUp'),
+          title: t('moveUp'),
+          disabled: index === 0,
+          onClick: () => moveInQueue(index, index - 1),
+        }, '\u2191'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('moveDown'),
+          title: t('moveDown'),
+          disabled: index === state.queue.length - 1,
+          onClick: () => moveInQueue(index, index + 1),
+        }, '\u2193'),
+        h('button', {
+          className: 'ym-mini-button',
+          type: 'button',
+          'aria-label': t('removeRow'),
+          title: t('removeRow'),
+          onClick: () => removeFromQueue(index),
+        }, '\u00d7'))));
+
+      return h('div', { className: 'ym-form' }, header, h('div', { className: 'ym-results' }, rows));
+    }
+
+    /** Add the current track to a Yandex playlist, or create one on the spot. */
+    function AddToPlaylist({ t, track, onClose }) {
+      const [state, setState] = React.useState({ loading: true, items: [], error: '', done: '' });
+      const [title, setTitle] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+
+      const load = React.useCallback(async () => {
+        try {
+          const value = await call('music/playlists');
+          setState({ loading: false, items: Array.isArray(value.playlists) ? value.playlists : [], error: '', done: '' });
+        } catch (failure) {
+          setState({ loading: false, items: [], error: failure.message || 'playlists failed', done: '' });
+        }
+      }, []);
+
+      React.useEffect(() => {
+        void load();
+      }, [load]);
+
+      const insert = async (kind) => {
+        if (busy) return;
+        setBusy(true);
+        try {
+          await call('music/playlist/insert', {
+            kind,
+            trackId: String(track.id),
+            albumId: track.albumId,
+          });
+          setState((previous) => ({ ...previous, error: '', done: t('addedToPlaylist') }));
+        } catch (failure) {
+          setState((previous) => ({ ...previous, error: failure.message || 'insert failed', done: '' }));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const create = async () => {
+        if (busy || title.trim() === '') return;
+        setBusy(true);
+        try {
+          const created = await call('music/playlist/create', { title: title.trim() });
+          setTitle('');
+          await insert(created.kind);
+          await load();
+        } catch (failure) {
+          setState((previous) => ({ ...previous, error: failure.message || 'create failed', done: '' }));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      return h('div', { className: 'ym-add', role: 'dialog', 'aria-label': t('addToPlaylist') },
+        h('div', { className: 'ym-add-head' },
+          h('span', { className: 'ym-add-title' }, t('addToPlaylist')),
+          h('button', {
+            className: 'ym-mini-button',
+            type: 'button',
+            'aria-label': t('close'),
+            onClick: onClose,
+          }, '\u00d7')),
+        state.done !== '' ? h('p', { className: 'ym-hint' }, state.done) : null,
+        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
+        h('div', { className: 'ym-add-list' },
+          state.loading
+            ? h('p', { className: 'ym-hint' }, t('searching'))
+            : state.items.length === 0
+              ? h('p', { className: 'ym-hint' }, t('noPlaylists'))
+              : state.items.map((playlist) => h('button', {
+                key: `k${playlist.kind}`,
+                type: 'button',
+                className: 'ym-result',
+                disabled: busy,
+                onClick: () => void insert(playlist.kind),
+              },
+              h('span', { className: 'ym-result-text' },
+                h('span', { className: 'ym-result-title' }, playlist.title),
+                h('span', { className: 'ym-result-sub' }, `${playlist.trackCount}`))))),
+        h('div', { className: 'ym-add-create' },
+          h('input', {
+            className: 'ym-input',
+            value: title,
+            placeholder: t('newPlaylistPlaceholder'),
+            maxLength: 120,
+            onChange: (event) => setTitle(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') void create();
+            },
+          }),
+          h('button', {
+            className: 'ym-button',
+            type: 'button',
+            disabled: busy || title.trim() === '',
+            onClick: () => void create(),
+          }, t('createPlaylist'))));
+    }
+
     /** Transport controls for the current track. */
     function PlayerBar({ t }) {
       const state = usePlayer();
       const current = state.current;
       const currentId = current === null ? '' : String(current.id);
       const [likedNow, setLikedNow] = React.useState(false);
+      const [addOpen, setAddOpen] = React.useState(false);
 
       React.useEffect(() => {
         let alive = true;
@@ -1070,6 +1419,14 @@ window.__ModuleLoader__.load({
               })();
             },
           }, likedNow ? '\u2665' : '\u2661'),
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'aria-label': t('addToPlaylist'),
+            title: t('addToPlaylist'),
+            'aria-expanded': addOpen ? 'true' : 'false',
+            onClick: () => setAddOpen((value) => !value),
+          }, '+'),
           h('input', {
             className: 'ym-seek',
             type: 'range',
@@ -1080,6 +1437,7 @@ window.__ModuleLoader__.load({
             onChange: (event) => seekTo(Number(event.target.value)),
           }),
           h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
+        addOpen ? h(AddToPlaylist, { t, track: current, onClose: () => setAddOpen(false) }) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null,
         // Temporary: makes a stray second audio element visible in a screenshot.
         state.error !== ''
@@ -1198,8 +1556,18 @@ window.__ModuleLoader__.load({
             type: 'button',
             'data-active': tab === 'wave' ? 'true' : 'false',
             onClick: () => setTab('wave'),
-          }, t('tabWave'))),
-        tab === 'wave' ? wavePane : tab === 'playlists' ? h(PlaylistsPane, { t }) : searchPane);
+          }, t('tabWave')),
+          h('button', {
+            className: 'ym-tab',
+            type: 'button',
+            'data-active': tab === 'queue' ? 'true' : 'false',
+            onClick: () => setTab('queue'),
+          }, t('tabQueue'))),
+        tab === 'wave'
+          ? wavePane
+          : tab === 'playlists'
+            ? h(PlaylistsPane, { t })
+            : tab === 'queue' ? h(QueuePane, { t }) : searchPane);
     }
 
     /** Auth state machine for the popover body. */
