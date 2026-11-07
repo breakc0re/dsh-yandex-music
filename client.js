@@ -415,6 +415,7 @@ window.__ModuleLoader__.load({
 .ym-result-actions .ym-mini-button{width:22px;height:22px}
 .ym-result:hover .ym-result-actions,.ym-result[data-active="true"] .ym-result-actions{opacity:1}
 .ym-results-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:4px 0 -2px}
+.ym-form[data-dragging="true"] .ym-queue-head,.ym-form[data-dragging="true"] .ym-sticky-bar{pointer-events:none;background:transparent;backdrop-filter:none;border-bottom-color:transparent;opacity:.35}
 .ym-sticky-bar{position:sticky;top:var(--ym-tabs-h,38px);z-index:5;margin:0 -12px 0;padding:5px 12px 9px;background:rgba(20,20,24,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
 .ym-section{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dsw-alias-label-secondary);margin:6px 0 -2px}
 .ym-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 4px;margin:0 -2px;scrollbar-width:thin}
@@ -1956,7 +1957,7 @@ window.__ModuleLoader__.load({
                 }, t('deletePlaylist'))))
           : null;
 
-        return h('div', { className: 'ym-form' },
+        return h('div', { className: 'ym-form', 'data-dragging': dragFrom >= 0 ? 'true' : 'false' },
           h('div', {
             className: 'ym-row ym-sticky-bar',
             onDragOver: (event) => {
@@ -2369,7 +2370,7 @@ window.__ModuleLoader__.load({
         }, '\u2715'));
 
       if (state.queue.length === 0) {
-        return h('div', { className: 'ym-form' }, header,
+        return h('div', { className: 'ym-form', 'data-dragging': dragFrom >= 0 ? 'true' : 'false' }, header,
           origin.loading ? h(SkeletonRows, { count: 5 }) : h(StatusLine, { text: t('queueEmpty') }));
       }
 
@@ -2441,7 +2442,7 @@ window.__ModuleLoader__.load({
           onClick: () => removeFromQueue(index),
         }, '\u00d7'))));
 
-      return h('div', { className: 'ym-form' }, header, h('div', {
+      return h('div', { className: 'ym-form', 'data-dragging': dragFrom >= 0 ? 'true' : 'false' }, header, h('div', {
         className: 'ym-results',
         ref: listRef,
         onDragOver: (event) => {
