@@ -11,8 +11,7 @@ window.__ModuleLoader__.load({
     /** Marks the injected stylesheet so a reload replaces it instead of stacking. */
     const STYLE_ID = 'yandex-music';
     /** Popover geometry: a square card anchored above the footer row. */
-    const CARD_WIDTH = 553;
-    const CARD_HEIGHT = 553;
+    const CARD_SIZE = 553;
     /** Host routes owned by this plugin. */
     const API = '/api/plugins/yandex-music';
     /**
@@ -145,6 +144,7 @@ window.__ModuleLoader__.load({
       menuAlbum: 'К альбому',
       menuCopy: 'Скопировать ссылку',
       menuCopied: 'Ссылка скопирована',
+      menuOpen: 'Открыть в Яндекс.Музыке',
       unlike: 'Убрать из «Мне нравится»',
       waveStart: 'Включить «Мою волну»',
       waveLoading: 'Загружаем волну…',
@@ -273,6 +273,7 @@ window.__ModuleLoader__.load({
       menuAlbum: 'Go to the album',
       menuCopy: 'Copy link',
       menuCopied: 'Link copied',
+      menuOpen: 'Open in Yandex Music',
       unlike: 'Remove from liked tracks',
       waveStart: 'Start My Wave',
       waveLoading: 'Loading the wave…',
@@ -401,6 +402,7 @@ window.__ModuleLoader__.load({
 .ym-result{display:flex;align-items:center;gap:8px;width:100%;padding:5px 6px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;cursor:pointer}
 .ym-result{transition:background .12s ease}.ym-result:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .ym-result[data-active="true"]{background:var(--dsw-alias-interactive-bg-active,var(--dsw-alias-interactive-bg-hover))}
+.ym-result[data-over="true"]{box-shadow:inset 0 0 0 1px var(--dsw-alias-border-accent,#3b6fe0)}
 .ym-result-cover{flex:none;width:32px;height:32px;border-radius:6px;object-fit:cover;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06))}
 .ym-result-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;background:var(--dsw-alias-bg-l1,rgba(255,255,255,.06));font-size:14px}
 .ym-result-text{min-width:0;display:flex;flex-direction:column;gap:1px}
@@ -1210,6 +1212,48 @@ window.__ModuleLoader__.load({
     let playToken = 0;
 
     /**
+     * The next track's direct URL, resolved while the current one plays. The
+     * network round-trip is the audible part of the gap between tracks, so
+     * resolving it in advance makes a queue sound almost continuous.
+     */
+    const prefetch = { index: -1, trackId: '', url: '', preview: false };
+
+    function prefetchNext() {
+      const next = player.index + 1;
+      prefetch.index = -1;
+      prefetch.trackId = '';
+      prefetch.url = '';
+      if (next < 0 || next >= player.queue.length) return;
+      const track = player.queue[next];
+      if (track === null || track === undefined || track.id === undefined) return;
+      prefetch.index = next;
+      prefetch.trackId = String(track.id);
+      void (async () => {
+        try {
+          const value = await call('music/track-url', { trackId: track.id, albumId: track.albumId });
+          // The queue may have moved while the request was in flight.
+          if (prefetch.index !== next || prefetch.trackId !== String(track.id)) return;
+          prefetch.url = typeof value.url === 'string' ? value.url : '';
+          prefetch.preview = value.preview === true;
+        } catch {
+          /* a failed prefetch only means the normal request happens later */
+        }
+      })();
+    }
+
+    /** Use the prefetched URL when it belongs to exactly this track. */
+    function takePrefetched(index) {
+      const track = player.queue[index];
+      if (track === null || track === undefined) return null;
+      if (prefetch.index !== index || prefetch.trackId !== String(track.id) || prefetch.url === '') return null;
+      const value = { url: prefetch.url, preview: prefetch.preview === true };
+      prefetch.index = -1;
+      prefetch.trackId = '';
+      prefetch.url = '';
+      return value;
+    }
+
+    /**
      * Only one thing may play at a time.
      *
      * A reloaded bundle revision can leave a previous `<audio>` alive outside
@@ -1243,7 +1287,8 @@ window.__ModuleLoader__.load({
       player.loading = true;
       emit();
       try {
-        const value = await call('music/track-url', {
+        const ready = takePrefetched(index);
+        const value = ready !== null ? ready : await call('music/track-url', {
           trackId: player.current.id,
           albumId: player.current.albumId,
         });
@@ -1272,6 +1317,7 @@ window.__ModuleLoader__.load({
         player.restoring = 0;
         saveResume(true);
         syncMediaSession(true);
+        prefetchNext();
         void sendFeedback('trackStarted', player.current);
       } catch (failure) {
         if (token !== playToken) return;
@@ -1623,6 +1669,8 @@ window.__ModuleLoader__.load({
     /** «Мне нравится» first, then the account's playlists, each opening its tracks. */
     function PlaylistsPane({ t }) {
       const playback = usePlayer();
+      const [dragFrom, setDragFrom] = React.useState(-1);
+      const [dragOver, setDragOver] = React.useState(-1);
       const [state, setState] = React.useState({
         view: 'list',
         loading: paneCache.playlists === null,
@@ -1742,6 +1790,27 @@ window.__ModuleLoader__.load({
           key: `${track.id}-${index}`,
           className: 'ym-result',
           'data-active': playing !== '' && playing === String(track.id) ? 'true' : 'false',
+          'data-over': dragOver === index ? 'true' : 'false',
+          draggable: editable,
+          onDragStart: () => setDragFrom(index),
+          onDragOver: (event) => {
+            if (!editable) return;
+            event.preventDefault();
+            setDragOver(index);
+          },
+          onDragLeave: () => setDragOver(-1),
+          onDrop: (event) => {
+            event.preventDefault();
+            const from = dragFrom;
+            setDragFrom(-1);
+            setDragOver(-1);
+            if (!editable || from < 0 || from === index) return;
+            void mutate('music/playlist/move', { kind: state.kind, from, to: index });
+          },
+          onDragEnd: () => {
+            setDragFrom(-1);
+            setDragOver(-1);
+          },
           onContextMenu: (event) => openTrackMenu(event, track),
         },
         h('button', {
@@ -2428,6 +2497,12 @@ window.__ModuleLoader__.load({
           'aria-label': state.muted ? t('unmute') : t('mute'),
           title: state.muted ? t('unmute') : t('mute'),
           onClick: toggleMute,
+          onWheel: (event) => {
+            // Wheel over the icon is the fastest way to nudge the volume.
+            event.preventDefault();
+            const step = event.deltaY < 0 ? 0.05 : -0.05;
+            setVolume((player.muted ? 0 : player.volume) + step);
+          },
         }, h(VolumeIcon, { size: 17, muted: state.muted })),
         h('div', { className: 'ym-volume-pop', role: 'group', 'aria-label': t('volume') },
           h('div', { className: 'ym-volume-slot' },
@@ -2834,6 +2909,10 @@ window.__ModuleLoader__.load({
                 action(track.albumId, track.albumTitle ?? '');
               })
               : null,
+            item('open', '\u2197', t('menuOpen'), () => {
+              close();
+              window.open(`https://music.yandex.ru/track/${track.id}`, '_blank', 'noopener');
+            }),
             item('copy', '\u29c9', copied ? t('menuCopied') : t('menuCopy'), () => {
               void (async () => {
                 try {
@@ -3325,6 +3404,52 @@ window.__ModuleLoader__.load({
         }
       }, [open]);
 
+      /** Keyboard transport while the popover is open: space, arrows, M. */
+      React.useEffect(() => {
+        if (!open) return undefined;
+        const onKeyDown = (event) => {
+          if (event.ctrlKey || event.metaKey || event.altKey) return;
+          const target = event.target;
+          if (target instanceof Element) {
+            const tag = target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable === true) return;
+          }
+          switch (event.key) {
+            case ' ':
+              event.preventDefault();
+              togglePlay();
+              break;
+            case 'ArrowRight':
+              event.preventDefault();
+              seekBy(5);
+              break;
+            case 'ArrowLeft':
+              event.preventDefault();
+              seekBy(-5);
+              break;
+            case 'ArrowUp':
+              event.preventDefault();
+              setVolume((player.muted ? 0 : player.volume) + 0.05);
+              break;
+            case 'ArrowDown':
+              event.preventDefault();
+              setVolume((player.muted ? 0 : player.volume) - 0.05);
+              break;
+            case 'm':
+            case 'M':
+            case 'ь':
+            case 'Ь':
+              event.preventDefault();
+              toggleMute();
+              break;
+            default:
+              break;
+          }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+      }, [open]);
+
       const place = React.useCallback(() => {
         const node = buttonRef.current;
         if (node === null) return;
@@ -3373,18 +3498,22 @@ window.__ModuleLoader__.load({
 
       const cover = current !== null && typeof current.cover === 'string' ? current.cover : null;
 
-      /** Both windows share one geometry so they stay flush with each other. */
+      /**
+       * Both windows share one geometry so they stay flush with each other, and
+       * the size shrinks on a short screen instead of running off the top.
+       */
+      const size = Math.max(340, Math.min(CARD_SIZE, window.innerHeight - 24));
       const cardPos = anchor === null
         ? { left: 8, bottom: 8 }
         : {
-          left: Math.max(8, Math.min(anchor.left, window.innerWidth - CARD_WIDTH - 8)),
-          bottom: Math.max(8, Math.min(window.innerHeight - anchor.top + 8, window.innerHeight - CARD_HEIGHT - 8)),
+          left: Math.max(8, Math.min(anchor.left, window.innerWidth - size - 8)),
+          bottom: Math.max(8, Math.min(window.innerHeight - anchor.top + 8, window.innerHeight - size - 8)),
         };
-      const roomOnTheLeft = cardPos.left - CARD_WIDTH - 8 >= 8;
+      const roomOnTheLeft = cardPos.left - size - 8 >= 8;
       const lyricsPos = {
         left: roomOnTheLeft
-          ? cardPos.left - CARD_WIDTH - 8
-          : Math.min(cardPos.left + CARD_WIDTH + 8, Math.max(8, window.innerWidth - CARD_WIDTH - 8)),
+          ? cardPos.left - size - 8
+          : Math.min(cardPos.left + size + 8, Math.max(8, window.innerWidth - size - 8)),
         bottom: cardPos.bottom,
       };
 
@@ -3395,7 +3524,7 @@ window.__ModuleLoader__.load({
             'data-yandex-music-card': '',
             role: 'dialog',
             'aria-label': t('title'),
-            style: cardPos,
+            style: { ...cardPos, width: size, height: size },
           },
           h('div', { className: 'ym-card-inner' },
             h('div', { className: 'ym-card-head' },
@@ -3447,7 +3576,7 @@ window.__ModuleLoader__.load({
         : null;
       const lyrics = open && anchor !== null && playback.lyricsOpen
         ? ReactDOM.createPortal(
-          h(Guard, { fallback: null }, h(LyricsCard, { t, style: lyricsPos, onClose: toggleLyrics })),
+          h(Guard, { fallback: null }, h(LyricsCard, { t, style: { ...lyricsPos, width: size, height: size }, onClose: toggleLyrics })),
           document.body,
         )
         : null;
