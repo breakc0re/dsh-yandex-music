@@ -3,6 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const ReactDOM = require('react-dom');
+    const primitives = require('@deepseek-ai/dsh-client-ui-primitives');
     const h = React.createElement;
 
     /** Dictionary namespace owned by this plugin. */
@@ -13,6 +14,18 @@ window.__ModuleLoader__.load({
     const CARD_WIDTH = 340;
     /** Host routes owned by this plugin. */
     const API = '/api/plugins/yandex-music';
+    /**
+     * Yandex Music's own OAuth application. A token issued to it carries the
+     * `music:*` scopes, which is what makes the service honour a Plus
+     * subscription; a token from a personal application gets the default
+     * permission set and 30-second previews. Using someone else's client is a
+     * grey area — the field stays editable for that reason.
+     */
+    const MUSIC_CLIENT_ID = '23cabbbdc6cd418abb4b39c32c41195d';
+    /** The bundle that owns the Remote Control entry we relocate. */
+    const BRIDGE_PACKAGE = '@agents-anywhere/dsh-bridge-next';
+    /** Its footer entry id, taken from its own `sidebar.footer.action` registration. */
+    const BRIDGE_ENTRY_ID = 'agents-anywhere-next';
 
     /* ------------------------------------------------------------------ */
     /* copy                                                                */
@@ -28,6 +41,8 @@ window.__ModuleLoader__.load({
       setupLink: 'Открыть oauth.yandex.ru',
       clientId: 'client_id',
       clientSecret: 'client_secret (необязательно)',
+      useMusicClient: 'Подставить client_id Яндекс Музыки',
+      musicClientHint: 'Официальный клиент Музыки: с его токеном Яндекс отдаёт Плюс и полные треки. Чужое приложение — на свой риск.',
       save: 'Сохранить',
       saving: 'Сохраняем…',
       loginTitle: 'Вход в Яндекс',
@@ -51,6 +66,7 @@ window.__ModuleLoader__.load({
       previewBadge: 'превью 30 с',
       queueEmpty: 'Очередь пуста',
       nowPlaying: 'Сейчас играет',
+      remoteControl: 'Remote Control',
       retry: 'Повторить',
       errorGeneric: 'Не удалось выполнить запрос',
     };
@@ -65,6 +81,8 @@ window.__ModuleLoader__.load({
       setupLink: 'Open oauth.yandex.ru',
       clientId: 'client_id',
       clientSecret: 'client_secret (optional)',
+      useMusicClient: "Use Yandex Music's client_id",
+      musicClientHint: "The official Music client: its token gets Plus and full tracks. Someone else's application — use at your own risk.",
       save: 'Save',
       saving: 'Saving…',
       loginTitle: 'Sign in to Yandex',
@@ -88,6 +106,7 @@ window.__ModuleLoader__.load({
       previewBadge: '30 s preview',
       queueEmpty: 'The queue is empty',
       nowPlaying: 'Now playing',
+      remoteControl: 'Remote Control',
       retry: 'Retry',
       errorGeneric: 'The request failed',
     };
@@ -184,6 +203,34 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ */
+    /* plugin navigation                                                   */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * `pluginNavigation` belongs to the plugin-manager bundle and is optional:
+     * without it there is no page to send the relocated entry to, so the menu
+     * row stays hidden instead of becoming a dead button.
+     */
+    const navigation = { available: false, listeners: new Set() };
+
+    function setNavigation(value) {
+      if (navigation.available === value) return;
+      navigation.available = value;
+      for (const listener of navigation.listeners) listener();
+    }
+
+    function useNavigation() {
+      const [, force] = React.useReducer((value) => value + 1, 0);
+      React.useEffect(() => {
+        navigation.listeners.add(force);
+        return () => {
+          navigation.listeners.delete(force);
+        };
+      }, []);
+      return navigation.available;
+    }
+
+    /* ------------------------------------------------------------------ */
     /* components                                                          */
     /* ------------------------------------------------------------------ */
 
@@ -235,6 +282,13 @@ window.__ModuleLoader__.load({
           target: '_blank',
           rel: 'noreferrer',
         }, t('setupLink')),
+        h('button', {
+          className: 'ym-button',
+          'data-variant': 'ghost',
+          type: 'button',
+          onClick: () => setClientId(MUSIC_CLIENT_ID),
+        }, t('useMusicClient')),
+        h('p', { className: 'ym-hint' }, t('musicClientHint')),
         h('label', { className: 'ym-field' },
           h('span', { className: 'ym-label' }, t('clientId')),
           h('input', {
@@ -738,12 +792,48 @@ window.__ModuleLoader__.load({
     /* plugin                                                              */
     /* ------------------------------------------------------------------ */
 
+    /** Decorative phone glyph for the relocated Remote Control row. */
+    function SmartphoneIcon({ size }) {
+      return h('svg', {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+      },
+      h('rect', { x: 6, y: 2, width: 12, height: 20, rx: 2.5 }),
+      h('path', { d: 'M11 18h2' }));
+    }
+
+    /**
+     * Remote Control, relocated from the sidebar footer into the More menu.
+     * The bridge's own footer entry is shadowed, so this row is the only way in;
+     * it opens the bundle page where the bridge renders its connection panel.
+     */
+    function RemoteMenuRow({ t, onDismiss, openRemote }) {
+      const available = useNavigation();
+      if (!available) return null;
+      return h(primitives.MenuItemButton, {
+        icon: h(SmartphoneIcon, { size: 16 }),
+        separatorBefore: true,
+        onSelect: () => {
+          onDismiss();
+          openRemote();
+        },
+      }, t('remoteControl'));
+    }
+
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, { ru, en }), 'yandex-music: dictionaries');
         ctx.effect(() => installStyles(), 'yandex-music: styles');
         const t = ctx.locale.bind(NS);
+
         ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
           name: 'sidebar.footer.action',
           id: 'yandex-music',
@@ -751,6 +841,37 @@ window.__ModuleLoader__.load({
           locale: NS,
           label: () => t('entry'),
         }, MusicEntry));
+
+        // Shadow the bridge's footer entry: in a list slot the lowest priority
+        // wins the id, so this registration replaces the button with nothing.
+        ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+          name: 'sidebar.footer.action',
+          id: BRIDGE_ENTRY_ID,
+          priority: -1,
+          order: 26,
+        }, () => null));
+
+        ctx.inject(['pluginNavigation'], (scope) => {
+          scope.effect(() => {
+            setNavigation(true);
+            return () => setNavigation(false);
+          }, 'yandex-music: plugin navigation');
+        });
+
+        const openRemote = () => {
+          try {
+            ctx.get('pluginNavigation')?.openBundle(BRIDGE_PACKAGE);
+          } catch {
+            /* the service went away between render and click */
+          }
+        };
+
+        ctx.slots.inject('sidebar.panellist.actions', () => ctx.slots.register({
+          name: 'sidebar.panellist.actions',
+          id: 'yandex-music-remote',
+          locale: NS,
+          inject: () => ({ openRemote }),
+        }, RemoteMenuRow));
       },
     };
   },
