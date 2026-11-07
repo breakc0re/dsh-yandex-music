@@ -31,7 +31,7 @@
       "source": {
         "type": "git",
         "url": "https://github.com/breakc0re/dsh-yandex-music",
-        "commit": "REPLACE_WITH_RELEASE_COMMIT"
+        "commit": "df0fbb6141098296ad2fc82ac4dc4691c833b64c"
       }
     }
   ]
