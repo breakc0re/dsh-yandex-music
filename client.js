@@ -31,10 +31,10 @@ window.__ModuleLoader__.load({
       save: 'Сохранить',
       saving: 'Сохраняем…',
       loginTitle: 'Вход в Яндекс',
-      loginHint: 'Откройте страницу, разрешите доступ и введите 7-значный код, который покажет Яндекс.',
+      loginHint: 'Откройте страницу и разрешите доступ. Если Яндекс показал 7-значный код — введите его. Если вас перебросило на ваш Redirect URI, скопируйте значение параметра code из адресной строки.',
       login: 'Войти в Яндекс',
       openPage: 'Открыть страницу входа',
-      code: 'Код подтверждения',
+      code: 'Код подтверждения или code из адресной строки',
       submit: 'Подтвердить',
       submitting: 'Проверяем код…',
       signedIn: 'Вы вошли как',
@@ -56,10 +56,10 @@ window.__ModuleLoader__.load({
       save: 'Save',
       saving: 'Saving…',
       loginTitle: 'Sign in to Yandex',
-      loginHint: 'Open the page, allow access, then enter the 7-digit code Yandex shows you.',
+      loginHint: 'Open the page and allow access. If Yandex shows a 7-digit code, enter it. If you were redirected to your own Redirect URI, copy the code parameter from the address bar.',
       login: 'Sign in to Yandex',
       openPage: 'Open the sign-in page',
-      code: 'Confirmation code',
+      code: 'Confirmation code or code from the address bar',
       submit: 'Confirm',
       submitting: 'Checking the code…',
       signedIn: 'Signed in as',
@@ -95,7 +95,7 @@ window.__ModuleLoader__.load({
 .ym-error{font-size:12px;color:var(--dsw-alias-label-danger,#ff6b6b);margin:0}
 .ym-link{color:var(--dsw-alias-label-accent,#7aa7ff);word-break:break-all;font-size:12px}
 .ym-row{display:flex;align-items:center;gap:8px}
-.ym-code{letter-spacing:.18em;font-variant-numeric:tabular-nums}
+.ym-code{font-variant-numeric:tabular-nums}
 `;
 
     /** Inject the plugin stylesheet once; the disposer removes it on teardown. */
@@ -274,11 +274,11 @@ window.__ModuleLoader__.load({
           h('input', {
             className: 'ym-input ym-code',
             value: code,
-            inputMode: 'numeric',
             autoComplete: 'one-time-code',
-            maxLength: 12,
+            spellCheck: false,
+            maxLength: 512,
             disabled: session === null,
-            onChange: (event) => setCode(event.target.value.replace(/[^\d]/gu, '')),
+            onChange: (event) => setCode(event.target.value.trim()),
           })),
         error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, error) : null,
         h('button', {

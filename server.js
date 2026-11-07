@@ -143,8 +143,13 @@ export function apply(ctx) {
     'auth/complete': async (request, response) => {
       if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
       const body = await readJsonBody(request);
-      const code = text(body.code, 32).replace(/\s+/gu, '');
-      if (!/^\d{4,12}$/u.test(code)) return fail(response, 400, 'code', 'confirmation code must be digits');
+      // Two shapes are valid here: the 7-digit code Yandex shows on the
+      // verification_code page, and the longer alphanumeric `code` from a
+      // redirect URL when the application registered a real Redirect URI.
+      const code = text(body.code, 512).replace(/\s+/gu, '');
+      if (!/^[A-Za-z0-9._~-]{4,512}$/u.test(code)) {
+        return fail(response, 400, 'code', 'confirmation code is missing or malformed');
+      }
       const state = text(body.state, 64);
       const entry = pending.get(state);
       if (entry === undefined) return fail(response, 400, 'state', 'authorization session expired, start again');
