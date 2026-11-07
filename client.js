@@ -113,6 +113,18 @@ window.__ModuleLoader__.load({
       sameLanguage: 'Текст уже на русском',
       translationSource: 'Перевод',
       translationMachine: 'машинный',
+      editPlaylist: 'Изменить плейлист',
+      save: 'Сохранить',
+      playlistRenamed: 'Готово',
+      playlistCreated: 'Плейлист создан',
+      playlistDeleted: 'Плейлист удалён',
+      playlistEmpty: 'В плейлисте пока нет треков',
+      visibilityPublic: 'Публичный плейлист',
+      visibilityPrivate: 'Приватный плейлист',
+      makePublic: 'Сделать публичным',
+      makePrivate: 'Сделать приватным',
+      deletePlaylist: 'Удалить плейлист',
+      deleteConfirm: 'Точно удалить?',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -211,6 +223,18 @@ window.__ModuleLoader__.load({
       sameLanguage: 'The lyrics are already Russian',
       translationSource: 'Translation',
       translationMachine: 'machine',
+      editPlaylist: 'Edit playlist',
+      save: 'Save',
+      playlistRenamed: 'Done',
+      playlistCreated: 'Playlist created',
+      playlistDeleted: 'Playlist deleted',
+      playlistEmpty: 'No tracks in this playlist yet',
+      visibilityPublic: 'Public playlist',
+      visibilityPrivate: 'Private playlist',
+      makePublic: 'Make public',
+      makePrivate: 'Make private',
+      deletePlaylist: 'Delete playlist',
+      deleteConfirm: 'Delete for sure?',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -293,6 +317,7 @@ window.__ModuleLoader__.load({
 .ym-code{font-variant-numeric:tabular-nums}
 .ym-add{position:absolute;bottom:calc(100% + 6px);right:0;left:0;z-index:6;padding:10px;border-radius:11px;background:rgba(16,16,20,.97);border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 12px 30px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:7px;max-height:250px}
 .ym-add-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ym-add-inline{position:static;bottom:auto;left:auto;right:auto;max-height:none;padding:9px;margin:0 0 4px}
 .ym-add-title{font-size:12px;font-weight:600}
 .ym-add-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px}
 .ym-add-create{display:flex;gap:6px;align-items:center}
@@ -1238,62 +1263,122 @@ window.__ModuleLoader__.load({
         loading: true,
         error: '',
         playlists: [],
+        kind: -1,
         title: '',
+        visibility: 'private',
         tracks: [],
         tracksLoading: false,
+        editing: false,
+        draft: '',
+        confirmDelete: false,
+        busy: false,
+        message: '',
+        newTitle: '',
       });
 
-      React.useEffect(() => {
-        let cancelled = false;
-        (async () => {
-          try {
-            const value = await call('music/playlists');
-            if (cancelled) return;
-            setState((previous) => ({
-              ...previous,
-              loading: false,
-              playlists: Array.isArray(value.playlists) ? value.playlists : [],
-              error: '',
-            }));
-          } catch (failure) {
-            if (!cancelled) {
-              setState((previous) => ({ ...previous, loading: false, error: failure.message || 'playlists failed' }));
-            }
-          }
-        })();
-        return () => {
-          cancelled = true;
-        };
+      const loadList = React.useCallback(async () => {
+        try {
+          const value = await call('music/playlists');
+          setState((previous) => ({
+            ...previous,
+            loading: false,
+            error: '',
+            playlists: Array.isArray(value.playlists) ? value.playlists : [],
+          }));
+        } catch (failure) {
+          setState((previous) => ({ ...previous, loading: false, error: failure.message || 'playlists failed' }));
+        }
       }, []);
 
-      const open = async (kind, title) => {
+      React.useEffect(() => {
+        void loadList();
+      }, [loadList]);
+
+      /** Open a playlist; `silent` refreshes it without resetting the edit panel. */
+      const open = React.useCallback(async (kind, title, silent = false) => {
         setState((previous) => ({
           ...previous,
           view: 'tracks',
+          kind,
           title,
-          tracks: [],
+          tracks: silent ? previous.tracks : [],
           tracksLoading: true,
           error: '',
+          message: '',
+          ...(silent ? {} : { editing: false, draft: title, confirmDelete: false }),
         }));
         try {
           const value = await call('music/playlist', { kind });
           setState((previous) => ({
             ...previous,
             tracksLoading: false,
+            title: typeof value.title === 'string' && value.title !== '' ? value.title : previous.title,
+            visibility: typeof value.visibility === 'string' ? value.visibility : previous.visibility,
             tracks: Array.isArray(value.tracks) ? value.tracks : [],
           }));
         } catch (failure) {
           setState((previous) => ({ ...previous, tracksLoading: false, error: failure.message || 'playlist failed' }));
         }
+      }, []);
+
+      /** Run one edit, then refresh the playlist and the list behind it. */
+      const mutate = async (path, body, message) => {
+        if (state.busy) return;
+        setState((previous) => ({ ...previous, busy: true, error: '', message: '' }));
+        try {
+          await call(path, body);
+          setState((previous) => ({ ...previous, busy: false, message: message ?? '' }));
+          await open(state.kind, state.title, true);
+          await loadList();
+        } catch (failure) {
+          setState((previous) => ({ ...previous, busy: false, error: failure.message || 'edit failed' }));
+        }
+      };
+
+      const create = async () => {
+        const title = state.newTitle.trim();
+        if (title === '' || state.busy) return;
+        setState((previous) => ({ ...previous, busy: true, error: '', message: '' }));
+        try {
+          const created = await call('music/playlist/create', { title });
+          setState((previous) => ({ ...previous, busy: false, newTitle: '', message: t('playlistCreated') }));
+          await loadList();
+          await open(created.kind, typeof created.title === 'string' ? created.title : title);
+        } catch (failure) {
+          setState((previous) => ({ ...previous, busy: false, error: failure.message || 'create failed' }));
+        }
+      };
+
+      const removePlaylist = async () => {
+        if (state.busy) return;
+        setState((previous) => ({ ...previous, busy: true, error: '' }));
+        try {
+          await call('music/playlist/delete', { kind: state.kind });
+          setState((previous) => ({
+            ...previous,
+            busy: false,
+            view: 'list',
+            editing: false,
+            confirmDelete: false,
+            message: t('playlistDeleted'),
+          }));
+          await loadList();
+        } catch (failure) {
+          setState((previous) => ({ ...previous, busy: false, error: failure.message || 'delete failed' }));
+        }
       };
 
       if (state.view === 'tracks') {
         const playing = playback.current === null ? '' : String(playback.current.id);
-        const rows = state.tracks.map((track, index) => h('button', {
+        const editable = state.kind >= 0 && state.kind !== 3;
+        const rows = state.tracks.map((track, index) => h('div', {
           key: `${track.id}-${index}`,
-          type: 'button',
           className: 'ym-result',
           'data-active': playing !== '' && playing === String(track.id) ? 'true' : 'false',
+        },
+        h('button', {
+          type: 'button',
+          className: 'ym-queue-open',
           onClick: () => playQueue(state.tracks, index),
         },
         track.cover !== null
@@ -1301,8 +1386,100 @@ window.__ModuleLoader__.load({
           : h('span', { className: 'ym-result-cover' }),
         h('span', { className: 'ym-result-text' },
           h('span', { className: 'ym-result-title' }, track.title),
-          h('span', { className: 'ym-result-sub' }, track.artists)),
-        h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs))));
+          h('span', { className: 'ym-result-sub' }, track.artists))),
+        h('span', { className: 'ym-result-time' }, fmtTime(track.durationMs)),
+        editable
+          ? h('span', { className: 'ym-result-actions' },
+            h('button', {
+              className: 'ym-mini-button',
+              type: 'button',
+              'aria-label': t('moveUp'),
+              title: t('moveUp'),
+              disabled: state.busy || index === 0,
+              onClick: () => void mutate('music/playlist/move', { kind: state.kind, from: index, to: index - 1 }),
+            }, '\u2191'),
+            h('button', {
+              className: 'ym-mini-button',
+              type: 'button',
+              'aria-label': t('moveDown'),
+              title: t('moveDown'),
+              disabled: state.busy || index === state.tracks.length - 1,
+              onClick: () => void mutate('music/playlist/move', { kind: state.kind, from: index, to: index + 1 }),
+            }, '\u2193'),
+            h('button', {
+              className: 'ym-mini-button',
+              type: 'button',
+              'aria-label': t('removeRow'),
+              title: t('removeRow'),
+              disabled: state.busy,
+              onClick: () => void mutate('music/playlist/remove', { kind: state.kind, from: index }),
+            }, '\u00d7'))
+          : null));
+
+        const editPanel = state.editing && editable
+          ? h('div', { className: 'ym-add ym-add-inline' },
+            h('div', { className: 'ym-add-head' },
+              h('span', { className: 'ym-add-title' }, t('editPlaylist')),
+              h('button', {
+                className: 'ym-mini-button',
+                type: 'button',
+                'aria-label': t('close'),
+                onClick: () => setState((previous) => ({ ...previous, editing: false, confirmDelete: false })),
+              }, '\u00d7')),
+            h('div', { className: 'ym-add-create' },
+              h('input', {
+                className: 'ym-input',
+                value: state.draft,
+                maxLength: 120,
+                placeholder: t('newPlaylistPlaceholder'),
+                onChange: (event) => setState((previous) => ({ ...previous, draft: event.target.value })),
+                onKeyDown: (event) => {
+                  if (event.key !== 'Enter') return;
+                  const next = state.draft.trim();
+                  if (next !== '' && next !== state.title) {
+                    void mutate('music/playlist/rename', { kind: state.kind, title: next }, t('playlistRenamed'));
+                  }
+                },
+              }),
+              h('button', {
+                className: 'ym-button',
+                type: 'button',
+                disabled: state.busy || state.draft.trim() === '' || state.draft.trim() === state.title,
+                onClick: () => void mutate(
+                  'music/playlist/rename',
+                  { kind: state.kind, title: state.draft.trim() },
+                  t('playlistRenamed'),
+                ),
+              }, t('save'))),
+            h('div', { className: 'ym-add-create' },
+              h('span', { className: 'ym-hint' }, state.visibility === 'public' ? t('visibilityPublic') : t('visibilityPrivate')),
+              h('button', {
+                className: 'ym-button',
+                'data-variant': 'ghost',
+                type: 'button',
+                disabled: state.busy,
+                onClick: () => void mutate(
+                  'music/playlist/visibility',
+                  { kind: state.kind, visibility: state.visibility === 'public' ? 'private' : 'public' },
+                  t('playlistRenamed'),
+                ),
+              }, state.visibility === 'public' ? t('makePrivate') : t('makePublic'))),
+            h('div', { className: 'ym-add-create' },
+              state.confirmDelete
+                ? h('button', {
+                  className: 'ym-button',
+                  type: 'button',
+                  disabled: state.busy,
+                  onClick: () => void removePlaylist(),
+                }, t('deleteConfirm'))
+                : h('button', {
+                  className: 'ym-button',
+                  'data-variant': 'ghost',
+                  type: 'button',
+                  disabled: state.busy,
+                  onClick: () => setState((previous) => ({ ...previous, confirmDelete: true })),
+                }, t('deletePlaylist'))))
+          : null;
 
         return h('div', { className: 'ym-form' },
           h('div', { className: 'ym-row ym-sticky-bar' },
@@ -1311,9 +1488,31 @@ window.__ModuleLoader__.load({
               className: 'ym-icon-button',
               'aria-label': t('back'),
               title: t('back'),
-              onClick: () => setState((previous) => ({ ...previous, view: 'list', error: '' })),
+              onClick: () => setState((previous) => ({
+                ...previous,
+                view: 'list',
+                error: '',
+                editing: false,
+                confirmDelete: false,
+                message: '',
+              })),
             }, '\u2190'),
             h('span', { className: 'ym-playlist-title' }, state.title),
+            editable
+              ? h('button', {
+                type: 'button',
+                className: 'ym-icon-button',
+                'data-on': state.editing ? 'true' : 'false',
+                'aria-label': t('editPlaylist'),
+                title: t('editPlaylist'),
+                onClick: () => setState((previous) => ({
+                  ...previous,
+                  editing: !previous.editing,
+                  draft: previous.title,
+                  confirmDelete: false,
+                })),
+              }, '\u22ef')
+              : null,
             h('button', {
               type: 'button',
               className: 'ym-icon-button',
@@ -1322,9 +1521,15 @@ window.__ModuleLoader__.load({
               disabled: state.tracks.length === 0,
               onClick: () => addToQueue(state.tracks),
             }, '+')),
+          editPanel,
           state.tracksLoading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
           state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
-          h('div', { className: 'ym-results' }, rows));
+          state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
+          rows.length > 0
+            ? h('p', { className: 'ym-section' }, `${t('tracksSection')} \u00b7 ${state.tracks.length}`)
+            : null,
+          h('div', { className: 'ym-results' }, rows),
+          !state.tracksLoading && rows.length === 0 ? h('p', { className: 'ym-hint' }, t('playlistEmpty')) : null);
       }
 
       const rows = [
@@ -1352,8 +1557,26 @@ window.__ModuleLoader__.load({
       ];
 
       return h('div', { className: 'ym-form' },
+        h('div', { className: 'ym-add-create' },
+          h('input', {
+            className: 'ym-input',
+            value: state.newTitle,
+            placeholder: t('newPlaylistPlaceholder'),
+            maxLength: 120,
+            onChange: (event) => setState((previous) => ({ ...previous, newTitle: event.target.value })),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') void create();
+            },
+          }),
+          h('button', {
+            className: 'ym-button',
+            type: 'button',
+            disabled: state.busy || state.newTitle.trim() === '',
+            onClick: () => void create(),
+          }, t('createPlaylist'))),
         state.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
         state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error) : null,
+        state.message !== '' ? h('p', { className: 'ym-hint' }, state.message) : null,
         h('div', { className: 'ym-results' }, rows));
     }
     function seekTo(seconds) {

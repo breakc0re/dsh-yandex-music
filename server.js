@@ -15,7 +15,18 @@ import {
   refreshAccessToken,
 } from './lib/oauth.js';
 import { MUSIC_CLIENT_ID, MUSIC_CLIENT_SECRET, pollDeviceToken, requestDeviceCode } from './lib/device.js';
-import { addTrackToPlaylist, createPlaylist, listPlaylists, readPlaylist, setTrackLike } from './lib/playlists.js';
+import {
+  addTrackToPlaylist,
+  createPlaylist,
+  deletePlaylist,
+  listPlaylists,
+  moveTrack,
+  readPlaylist,
+  removeTracks,
+  renamePlaylist,
+  setPlaylistVisibility,
+  setTrackLike,
+} from './lib/playlists.js';
 import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
 import { readAccount, readAlbum, readArtist, readIdentity, readLyrics, resolveTrackUrl, searchTracks } from './lib/yandex.js';
@@ -373,6 +384,82 @@ export function apply(ctx) {
       if (result.ok !== true) return fail(response, 502, result.reason ?? 'change', 'the playlist rejected the change');
       return sendJson(response, 200, { ok: true, value: { revision: result.revision } });
     },
+    'music/playlist/remove': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const kind = Number(String(body.kind ?? ''));
+      const from = Number(String(body.from ?? ''));
+      const to = body.to === undefined ? from + 1 : Number(String(body.to ?? ''));
+      if (!Number.isInteger(kind) || kind < 0) return fail(response, 400, 'kind', 'kind is required');
+      if (!Number.isInteger(from) || from < 0) return fail(response, 400, 'from', 'from is required');
+      if (!Number.isInteger(to) || to <= from) return fail(response, 400, 'to', 'to must be after from');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const result = await removeTracks(auth.accessToken, auth.uid, kind, from, to);
+      if (result.ok !== true) return fail(response, 502, result.reason ?? 'remove', 'the playlist rejected the change');
+      return sendJson(response, 200, { ok: true, value: { revision: result.revision } });
+    },
+
+    'music/playlist/move': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const kind = Number(String(body.kind ?? ''));
+      const from = Number(String(body.from ?? ''));
+      const to = Number(String(body.to ?? ''));
+      if (!Number.isInteger(kind) || kind < 0) return fail(response, 400, 'kind', 'kind is required');
+      if (!Number.isInteger(from) || from < 0) return fail(response, 400, 'from', 'from is required');
+      if (!Number.isInteger(to) || to < 0) return fail(response, 400, 'to', 'to is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const result = await moveTrack(auth.accessToken, auth.uid, kind, from, to);
+      if (result.ok !== true) return fail(response, 502, result.reason ?? 'move', 'the playlist rejected the change');
+      return sendJson(response, 200, { ok: true, value: { revision: result.revision } });
+    },
+
+    'music/playlist/rename': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const kind = Number(String(body.kind ?? ''));
+      const title = text(String(body.title ?? ''), 120);
+      if (!Number.isInteger(kind) || kind < 0) return fail(response, 400, 'kind', 'kind is required');
+      if (title === '') return fail(response, 400, 'title', 'title is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const ok = await renamePlaylist(auth.accessToken, auth.uid, kind, title);
+      if (ok !== true) return fail(response, 502, 'rename', 'the playlist was not renamed');
+      return sendJson(response, 200, { ok: true, value: { kind, title } });
+    },
+
+    'music/playlist/visibility': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const kind = Number(String(body.kind ?? ''));
+      const visibility = String(body.visibility ?? '') === 'public' ? 'public' : 'private';
+      if (!Number.isInteger(kind) || kind < 0) return fail(response, 400, 'kind', 'kind is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const ok = await setPlaylistVisibility(auth.accessToken, auth.uid, kind, visibility);
+      if (ok !== true) return fail(response, 502, 'visibility', 'the playlist visibility did not change');
+      return sendJson(response, 200, { ok: true, value: { kind, visibility } });
+    },
+
+    'music/playlist/delete': async (request, response) => {
+      if (request.method !== 'POST') return fail(response, 405, 'method', 'POST only');
+      const body = await readJsonBody(request);
+      const kind = Number(String(body.kind ?? ''));
+      if (!Number.isInteger(kind) || kind < 0) return fail(response, 400, 'kind', 'kind is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      if (typeof auth.uid !== 'number') return fail(response, 400, 'uid', 'account uid is unknown');
+      const ok = await deletePlaylist(auth.accessToken, auth.uid, kind);
+      if (ok !== true) return fail(response, 502, 'delete', 'the playlist was not deleted');
+      return sendJson(response, 200, { ok: true, value: { kind } });
+    },
+
     'music/playlists': async (request, response) => {
       if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
       const auth = await freshAuth();
