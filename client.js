@@ -98,6 +98,12 @@ window.__ModuleLoader__.load({
       allTracks: 'Всего треков',
       openAlbum: 'Открыть альбом',
       openArtist: 'Открыть исполнителя',
+      volume: 'Громкость',
+      mute: 'Выключить звук',
+      unmute: 'Включить звук',
+      lyrics: 'Текст песни',
+      noLyrics: 'У этого трека нет текста',
+      lyricsEstimated: 'Текст без таймкодов — строки идут по длительности',
       likedPlaylist: 'Мне нравится',
       like: 'Добавить в «Мне нравится»',
       unlike: 'Убрать из «Мне нравится»',
@@ -181,6 +187,12 @@ window.__ModuleLoader__.load({
       allTracks: 'Total tracks',
       openAlbum: 'Open the album',
       openArtist: 'Open the artist',
+      volume: 'Volume',
+      mute: 'Mute',
+      unmute: 'Unmute',
+      lyrics: 'Lyrics',
+      noLyrics: 'No lyrics for this track',
+      lyricsEstimated: 'No timecodes — lines follow the track length',
       likedPlaylist: 'Liked tracks',
       like: 'Add to liked tracks',
       unlike: 'Remove from liked tracks',
@@ -319,6 +331,21 @@ window.__ModuleLoader__.load({
 .ym-icon-button[data-primary="true"]{background:var(--dsw-alias-bg-accent,#3b6fe0);color:#fff}
 .ym-seek{flex:1;min-width:0;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-time{flex:none;font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.ym-icon-button[data-on="true"]{color:var(--dsw-alias-label-accent,#7aa7ff)}
+.ym-volume{display:flex;align-items:center;gap:4px;margin-top:6px}
+.ym-volume .ym-icon-button{width:22px;height:22px}
+.ym-volume-range{flex:1;min-width:0;max-width:120px;height:14px;accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
+.ym-volume-value{min-width:30px;text-align:right}
+.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:380px;height:380px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;background:rgba(18,18,21,.94);backdrop-filter:blur(10px)}
+.ym-lyrics-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 2px}
+.ym-lyrics-track{flex:none;margin:0;padding:0 12px 6px;font-size:11px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.07)}
+.ym-lyrics-body{flex:1;min-height:0;overflow-y:auto;padding:14px 14px 28px}
+.ym-lyric{margin:0 0 8px;font-size:13px;line-height:1.45;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:color .12s}
+.ym-lyric:hover{color:var(--dsw-alias-label-primary)}
+.ym-lyric[data-past="true"]{opacity:.55}
+.ym-lyric[data-active="true"]{color:var(--dsw-alias-label-accent,#7aa7ff);font-weight:600;font-size:15px;line-height:1.4}
+.ym-lyric-gap{height:6px}
+.ym-lyrics-note{margin:14px 0 0;font-size:10px;color:var(--dsw-alias-label-secondary);opacity:.7}
 `;
 
     /** Inject the plugin stylesheet once; the disposer removes it on teardown. */
@@ -436,6 +463,25 @@ window.__ModuleLoader__.load({
       },
       h('circle', { cx: 12, cy: 8.5, r: 3.5 }),
       h('path', { d: 'M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6' }));
+    }
+
+    /** Speaker glyph; the mute state drops the sound waves. */
+    function VolumeIcon({ size, muted }) {
+      return h('svg', {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.6,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+      },
+      h('path', { d: 'M4 9.5h3.5L12 5.5v13L7.5 14.5H4z' }),
+      muted
+        ? h('path', { d: 'M16 9.5l4 5M20 9.5l-4 5' })
+        : h('path', { d: 'M15.5 8.8a5 5 0 0 1 0 6.4M18 6.5a8.5 8.5 0 0 1 0 11' }));
     }
 
     /** Decorative music note; the sidebar owns the accessible name. */
@@ -636,8 +682,54 @@ window.__ModuleLoader__.load({
       duration: 0,
       error: '',
       repeat: 'off',
+      volume: 1,
+      muted: false,
+      lyricsOpen: false,
       listeners: new Set(),
     };
+
+    /** Volume is the one setting worth remembering across reloads. */
+    const VOLUME_KEY = 'dsh-yandex-music.volume';
+    try {
+      if (typeof window !== 'undefined' && typeof window.localStorage === 'object' && window.localStorage !== null) {
+        const stored = Number(window.localStorage.getItem(VOLUME_KEY));
+        if (Number.isFinite(stored) && stored >= 0 && stored <= 1) player.volume = stored;
+      }
+    } catch {
+      /* a blocked storage must never break the player */
+    }
+
+    /** Push the volume onto whichever element is current and remember it. */
+    function applyVolume() {
+      const audio = player.audio;
+      if (audio !== null) audio.volume = player.muted ? 0 : player.volume;
+      try {
+        if (typeof window !== 'undefined' && window.localStorage !== null) {
+          window.localStorage.setItem(VOLUME_KEY, String(player.volume));
+        }
+      } catch {
+        /* ignore an unwritable storage */
+      }
+      emit();
+    }
+
+    function setVolume(value) {
+      const next = Math.min(1, Math.max(0, value));
+      player.volume = next;
+      player.muted = next === 0;
+      applyVolume();
+    }
+
+    function toggleMute() {
+      if (player.muted && player.volume === 0) player.volume = 0.5;
+      player.muted = !player.muted;
+      applyVolume();
+    }
+
+    function toggleLyrics() {
+      player.lyricsOpen = !player.lyricsOpen;
+      emit();
+    }
 
     function emit() {
       for (const listener of player.listeners) listener();
@@ -700,6 +792,7 @@ window.__ModuleLoader__.load({
       const shared = typeof window === 'undefined' ? null : window[AUDIO_KEY];
       const audio = shared instanceof Audio ? shared : new Audio();
       audio.preload = 'auto';
+      audio.volume = player.muted ? 0 : player.volume;
       // Attached (but hidden) so a reloaded revision can find and stop it.
       if (audio.isConnected !== true && typeof document !== 'undefined') {
         audio.setAttribute('data-yandex-music-audio', '');
@@ -1544,12 +1637,129 @@ window.__ModuleLoader__.load({
             onChange: (event) => seekTo(Number(event.target.value)),
           }),
           h('span', { className: 'ym-time' }, `${fmtTime(state.position * 1000)} / ${fmtTime(durationMs)}`)),
+        h('div', { className: 'ym-volume' },
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'aria-label': state.muted ? t('unmute') : t('mute'),
+            title: state.muted ? t('unmute') : t('mute'),
+            onClick: toggleMute,
+          }, h(VolumeIcon, { size: 15, muted: state.muted })),
+          h('input', {
+            className: 'ym-volume-range',
+            type: 'range',
+            min: 0,
+            max: 100,
+            step: 1,
+            value: Math.round((state.muted ? 0 : state.volume) * 100),
+            'aria-label': t('volume'),
+            title: `${t('volume')}: ${Math.round((state.muted ? 0 : state.volume) * 100)}%`,
+            onChange: (event) => setVolume(Number(event.target.value) / 100),
+          }),
+          h('span', { className: 'ym-time ym-volume-value' }, `${Math.round((state.muted ? 0 : state.volume) * 100)}%`),
+          h('button', {
+            className: 'ym-icon-button',
+            type: 'button',
+            'data-on': state.lyricsOpen ? 'true' : 'false',
+            'aria-label': t('lyrics'),
+            title: t('lyrics'),
+            'aria-pressed': state.lyricsOpen ? 'true' : 'false',
+            onClick: toggleLyrics,
+          }, 'Aa')),
         addOpen ? h(AddToPlaylist, { t, track: current, onClose: () => setAddOpen(false) }) : null,
-        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null,
-        // Temporary: makes a stray second audio element visible in a screenshot.
-        state.error !== ''
-          ? h('p', { className: 'ym-hint' }, `audio: ${typeof document === 'undefined' ? 0 : document.querySelectorAll('audio').length}, registry: ${audioRegistry().length}`)
-          : null);
+        state.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, state.error === 'playback' ? t('playbackFailed') : state.error) : null);
+    }
+
+    /**
+     * Karaoke window docked to the popover. Yandex hands out lyrics as plain
+     * lines, so each line's start is derived from the running position and the
+     * length of the line itself: monotonic, and it follows the real audio clock.
+     */
+    function LyricsCard({ t, style, onClose }) {
+      const state = usePlayer();
+      const current = state.current;
+      const currentId = current === null ? '' : String(current.id);
+      const [data, setData] = React.useState({ loading: true, error: '', lines: [] });
+      const bodyRef = React.useRef(null);
+
+      React.useEffect(() => {
+        let cancelled = false;
+        if (currentId === '') {
+          setData({ loading: false, error: '', lines: [] });
+          return undefined;
+        }
+        setData({ loading: true, error: '', lines: [] });
+        (async () => {
+          try {
+            const value = await call(`music/lyrics?trackId=${encodeURIComponent(currentId)}`);
+            if (cancelled) return;
+            setData({ loading: false, error: '', lines: Array.isArray(value.lines) ? value.lines : [] });
+          } catch (failure) {
+            if (!cancelled) setData({ loading: false, error: failure.message || 'lyrics failed', lines: [] });
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }, [currentId]);
+
+      const lines = data.lines;
+      const durationMs = state.duration > 0 ? state.duration * 1000 : (current === null ? 0 : current.durationMs);
+      const positionMs = state.position * 1000;
+
+      const weights = lines.map((line) => (line.trim() === '' ? 0.55 : Math.max(1, line.trim().length)));
+      const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+      const starts = [];
+      let active = -1;
+      let cursor = 0;
+      for (let i = 0; i < lines.length; i += 1) {
+        starts.push(totalWeight === 0 ? 0 : (cursor / totalWeight) * durationMs);
+        const end = totalWeight === 0 ? 0 : ((cursor + weights[i]) / totalWeight) * durationMs;
+        if (active < 0 && durationMs > 0 && positionMs < end) active = i;
+        cursor += weights[i];
+      }
+      if (active < 0 && lines.length > 0) active = lines.length - 1;
+
+      React.useEffect(() => {
+        const body = bodyRef.current;
+        if (body === null) return;
+        const node = body.querySelector('[data-active="true"]');
+        if (node === null) return;
+        const bodyRect = body.getBoundingClientRect();
+        const nodeRect = node.getBoundingClientRect();
+        const delta = nodeRect.top - bodyRect.top - bodyRect.height / 2 + nodeRect.height / 2;
+        if (Math.abs(delta) < 10) return;
+        body.scrollTo({ top: Math.max(0, body.scrollTop + delta), behavior: 'smooth' });
+      }, [active, lines.length]);
+
+      return h('div', { className: 'ym-lyrics-card', style, role: 'dialog', 'aria-label': t('lyrics') },
+        h('div', { className: 'ym-lyrics-head' },
+          h('span', { className: 'ym-card-title' }, t('lyrics')),
+          h('button', {
+            className: 'ym-card-close',
+            type: 'button',
+            'aria-label': t('close'),
+            onClick: onClose,
+          }, '\u00d7')),
+        h('p', { className: 'ym-lyrics-track' }, current === null ? '' : `${current.title} \u2014 ${current.artists}`),
+        h('div', { className: 'ym-lyrics-body', ref: bodyRef },
+          data.loading ? h('p', { className: 'ym-hint' }, t('searching')) : null,
+          data.error !== '' ? h('p', { className: 'ym-error', role: 'alert' }, data.error) : null,
+          !data.loading && data.error === '' && lines.length === 0
+            ? h('p', { className: 'ym-hint' }, t('noLyrics'))
+            : null,
+          lines.map((line, index) => line.trim() === ''
+            ? h('div', { key: `g${index}`, className: 'ym-lyric-gap', 'aria-hidden': 'true' })
+            : h('p', {
+              key: `l${index}`,
+              className: 'ym-lyric',
+              'data-active': index === active ? 'true' : 'false',
+              'data-past': index < active ? 'true' : 'false',
+              onClick: () => {
+                if (durationMs > 0) seekTo(Math.max(0, starts[index] / 1000));
+              },
+            }, line)),
+          lines.length > 0 ? h('p', { className: 'ym-lyrics-note' }, t('lyricsEstimated')) : null));
     }
 
     /** The «в очередь / следом» pair that every track list offers. */
@@ -2070,6 +2280,21 @@ window.__ModuleLoader__.load({
 
       const cover = current !== null && typeof current.cover === 'string' ? current.cover : null;
 
+      /** Both windows share one geometry so they stay flush with each other. */
+      const cardPos = anchor === null
+        ? { left: 8, bottom: 8 }
+        : {
+          left: Math.max(8, Math.min(anchor.left, window.innerWidth - CARD_WIDTH - 8)),
+          bottom: Math.max(8, Math.min(window.innerHeight - anchor.top + 8, window.innerHeight - CARD_HEIGHT - 8)),
+        };
+      const roomOnTheLeft = cardPos.left - CARD_WIDTH - 8 >= 8;
+      const lyricsPos = {
+        left: roomOnTheLeft
+          ? cardPos.left - CARD_WIDTH - 8
+          : Math.min(cardPos.left + CARD_WIDTH + 8, Math.max(8, window.innerWidth - CARD_WIDTH - 8)),
+        bottom: cardPos.bottom,
+      };
+
       const card = open && anchor !== null
         ? ReactDOM.createPortal(
           h('div', {
@@ -2077,10 +2302,7 @@ window.__ModuleLoader__.load({
             'data-yandex-music-card': '',
             role: 'dialog',
             'aria-label': t('title'),
-            style: {
-              left: Math.max(8, Math.min(anchor.left, window.innerWidth - CARD_WIDTH - 8)),
-              bottom: Math.max(8, Math.min(window.innerHeight - anchor.top + 8, window.innerHeight - CARD_HEIGHT - 8)),
-            },
+            style: cardPos,
           },
           h('div', {
             className: 'ym-card-bg',
@@ -2134,6 +2356,12 @@ window.__ModuleLoader__.load({
           document.body,
         )
         : null;
+      const lyrics = open && anchor !== null && playback.lyricsOpen
+        ? ReactDOM.createPortal(
+          h(LyricsCard, { t, style: lyricsPos, onClose: toggleLyrics }),
+          document.body,
+        )
+        : null;
       const durationMs = playback.duration > 0
         ? playback.duration * 1000
         : current !== null ? current.durationMs : 0;
@@ -2155,7 +2383,8 @@ window.__ModuleLoader__.load({
             'aria-expanded': open ? 'true' : 'false',
             onClick: toggle,
           }, h('span', { className: 'ym-entry-icon', 'aria-hidden': 'true' }, h(NoteIcon, { size: 18 }))),
-          card);
+          card,
+          lyrics);
       }
 
       return h(React.Fragment, null,
@@ -2228,7 +2457,8 @@ window.__ModuleLoader__.load({
               }, h('span', { className: 'ym-mini-bar-fill', style: { width: `${progress}%` } })),
               h('span', { className: 'ym-mini-time' }, `${fmtTime(playback.position * 1000)} / ${fmtTime(durationMs)}`))
             : null),
-        card);
+        card,
+        lyrics);
     }
 
     /* ------------------------------------------------------------------ */

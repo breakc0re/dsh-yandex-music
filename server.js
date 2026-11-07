@@ -18,7 +18,7 @@ import { MUSIC_CLIENT_ID, MUSIC_CLIENT_SECRET, pollDeviceToken, requestDeviceCod
 import { addTrackToPlaylist, createPlaylist, listPlaylists, readPlaylist, setTrackLike } from './lib/playlists.js';
 import { waveFeedback, waveTracks } from './lib/rotor.js';
 import { publicStatus, readAuth, resolveDataDir, writeAuth } from './lib/store.js';
-import { readAccount, readAlbum, readArtist, readIdentity, resolveTrackUrl, searchTracks } from './lib/yandex.js';
+import { readAccount, readAlbum, readArtist, readIdentity, readLyrics, resolveTrackUrl, searchTracks } from './lib/yandex.js';
 
 const PREFIX = '/api/plugins/yandex-music';
 const ROUTE_KEY = Symbol.for('dsh.yandex-music.routes');
@@ -237,6 +237,17 @@ export function apply(ctx) {
       if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
       const result = await readAlbum(auth.accessToken, id);
       if (result === null) return fail(response, 502, 'upstream', 'album is unavailable');
+      return sendJson(response, 200, { ok: true, value: result });
+    },
+
+    'music/lyrics': async (request, response) => {
+      if (request.method !== 'GET') return fail(response, 405, 'method', 'GET only');
+      const trackId = text(new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('trackId') ?? '', 32);
+      if (!/^\d+$/u.test(trackId)) return fail(response, 400, 'track', 'trackId is required');
+      const auth = await freshAuth();
+      if (auth.accessToken === '') return fail(response, 401, 'unauthorized', 'sign in first');
+      const result = await readLyrics(auth.accessToken, trackId);
+      if (result === null) return fail(response, 502, 'upstream', 'lyrics are unavailable');
       return sendJson(response, 200, { ok: true, value: result });
     },
 
