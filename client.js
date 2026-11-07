@@ -514,43 +514,97 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** One audio element per page, shared by every bundle revision. */
+    const AUDIO_KEY = '__dshYandexMusicAudio';
+
     function ensureAudio() {
       if (player.audio !== null) return player.audio;
-      const audio = new Audio();
+
+      const shared = typeof window === 'undefined' ? null : window[AUDIO_KEY];
+      const audio = shared instanceof Audio ? shared : new Audio();
       audio.preload = 'auto';
-      audio.addEventListener('timeupdate', () => {
-        player.position = audio.currentTime;
-        emit();
-      });
-      audio.addEventListener('durationchange', () => {
-        player.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-        emit();
-      });
-      audio.addEventListener('play', () => {
-        player.playing = true;
-        emit();
-      });
-      audio.addEventListener('pause', () => {
-        player.playing = false;
-        emit();
-      });
-      audio.addEventListener('ended', () => {
-        const finished = player.current;
-        const played = Number.isFinite(audio.duration) ? audio.duration : player.position;
-        if (finished !== null) void sendFeedback('trackFinished', finished, played);
-        void advance();
-      });
-      audio.addEventListener('error', () => {
-        player.error = 'playback';
-        player.playing = false;
-        emit();
-      });
+      // Attached (but hidden) so a reloaded revision can find and stop it.
+      if (audio.isConnected !== true && typeof document !== 'undefined') {
+        audio.setAttribute('data-yandex-music-audio', '');
+        audio.style.display = 'none';
+        document.body.appendChild(audio);
+      }
+      if (typeof window !== 'undefined') window[AUDIO_KEY] = audio;
+
+      // Handlers are replaced, never stacked: a new revision takes over the same
+      // element instead of leaving a second set of listeners behind.
+      audio.__ym = {
+        time: () => {
+          player.position = audio.currentTime;
+          emit();
+        },
+        duration: () => {
+          player.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+          emit();
+        },
+        play: () => {
+          player.playing = true;
+          emit();
+        },
+        pause: () => {
+          player.playing = false;
+          emit();
+        },
+        ended: () => {
+          const finished = player.current;
+          const played = Number.isFinite(audio.duration) ? audio.duration : player.position;
+          if (finished !== null) void sendFeedback('trackFinished', finished, played);
+          void advance();
+        },
+        error: () => {
+          player.error = 'playback';
+          player.playing = false;
+          emit();
+        },
+      };
+
+      if (audio.__ymWired !== true) {
+        audio.__ymWired = true;
+        audio.addEventListener('timeupdate', () => audio.__ym?.time());
+        audio.addEventListener('durationchange', () => audio.__ym?.duration());
+        audio.addEventListener('play', () => audio.__ym?.play());
+        audio.addEventListener('pause', () => audio.__ym?.pause());
+        audio.addEventListener('ended', () => audio.__ym?.ended());
+        audio.addEventListener('error', () => audio.__ym?.error());
+      }
+
       player.audio = audio;
       return audio;
     }
 
+    /** Bumped on every play request so a slow URL fetch cannot start a stale track. */
+    let playToken = 0;
+
+    /**
+     * Only one thing may play at a time.
+     *
+     * A reloaded bundle revision can leave a previous `<audio>` alive outside
+     * this module's reach, and setting `src` on our own element does not stop
+     * it. Everything we do not own is paused and unloaded before a new track
+     * starts, so two revisions can never sing over each other.
+     */
+    function silenceOthers(own) {
+      if (typeof document === 'undefined') return;
+      try {
+        for (const element of document.querySelectorAll('audio')) {
+          if (element === own) continue;
+          element.pause();
+          element.removeAttribute('src');
+          element.load();
+        }
+      } catch {
+        /* a hostile DOM must never break playback */
+      }
+    }
+
     async function playAt(index) {
       if (index < 0 || index >= player.queue.length) return;
+      const token = ++playToken;
       player.index = index;
       player.current = player.queue[index];
       player.error = '';
@@ -562,12 +616,17 @@ window.__ModuleLoader__.load({
           trackId: player.current.id,
           albumId: player.current.albumId,
         });
+        if (token !== playToken) return;
         const audio = ensureAudio();
+        silenceOthers(audio);
         player.preview = value.preview === true;
+        audio.pause();
         audio.src = value.url;
         await audio.play();
+        if (token !== playToken) return;
         void sendFeedback('trackStarted', player.current);
       } catch (failure) {
+        if (token !== playToken) return;
         player.error = failure.message || 'playback';
         player.playing = false;
       }
@@ -593,8 +652,12 @@ window.__ModuleLoader__.load({
         if (player.queue.length > 0) void playAt(0);
         return;
       }
-      if (audio.paused) void audio.play();
-      else audio.pause();
+      if (audio.paused) {
+        silenceOthers(audio);
+        void audio.play();
+      } else {
+        audio.pause();
+      }
     }
 
     function playQueue(tracks, index) {
