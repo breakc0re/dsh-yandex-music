@@ -183,8 +183,8 @@ window.__ModuleLoader__.load({
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ym-card{position:fixed;z-index:60;box-sizing:border-box;width:380px;height:380px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:#17171a}
-.ym-card-bg{position:absolute;inset:-25%;background-size:cover;background-position:center;filter:blur(28px) saturate(1.35);opacity:.55;pointer-events:none;transition:background-image .3s ease}
-.ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(14,14,16,.42) 0%,rgba(14,14,16,.78) 62%,rgba(14,14,16,.92) 100%)}
+.ym-card-bg{position:absolute;inset:-12%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(14px) saturate(1.2);opacity:.95;pointer-events:none;transform:scale(1.08)}
+.ym-card-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,12,.30) 0%,rgba(10,10,12,.58) 58%,rgba(10,10,12,.88) 100%)}
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;flex:none}
 .ym-card-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -236,7 +236,14 @@ window.__ModuleLoader__.load({
     /** Inject the plugin stylesheet once; the disposer removes it on teardown. */
     function installStyles() {
       if (typeof document === 'undefined') return () => {};
-      if (document.querySelector(`style[data-plugin="${STYLE_ID}"]`) !== null) return () => {};
+      const existing = document.querySelector(`style[data-plugin="${STYLE_ID}"]`);
+      if (existing !== null) {
+        // A reloaded revision must replace the rules, not inherit the old ones:
+        // the tag survives the bundle swap, and stale CSS silently won every
+        // specificity tie against the new layout.
+        existing.textContent = CSS;
+        return () => {};
+      }
       const tag = document.createElement('style');
       tag.dataset.plugin = STYLE_ID;
       tag.textContent = CSS;
