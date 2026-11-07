@@ -11,8 +11,8 @@ window.__ModuleLoader__.load({
     /** Marks the injected stylesheet so a reload replaces it instead of stacking. */
     const STYLE_ID = 'yandex-music';
     /** Popover geometry: a square card anchored above the footer row. */
-    const CARD_WIDTH = 418;
-    const CARD_HEIGHT = 418;
+    const CARD_WIDTH = 481;
+    const CARD_HEIGHT = 481;
     /** Host routes owned by this plugin. */
     const API = '/api/plugins/yandex-music';
     /**
@@ -312,7 +312,7 @@ window.__ModuleLoader__.load({
 [data-slot="sidebar.footer.action"] .aav-footerBtn{display:none !important}
 .ym-entry-icon{display:inline-flex;flex:none}
 .ym-entry-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:418px;height:418px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:rgba(18,18,21,.82);backdrop-filter:blur(6px)}
+.ym-card{position:fixed;z-index:60;box-sizing:border-box;width:481px;height:481px;padding:0;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.12));box-shadow:0 18px 44px rgba(0,0,0,.55);color:var(--dsw-alias-label-primary);font-size:13px;overflow:hidden;display:flex;background:rgba(18,18,21,.82);backdrop-filter:blur(6px)}
 
 .ym-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
 .ym-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 2px;flex:none}
@@ -435,7 +435,7 @@ window.__ModuleLoader__.load({
 .ym-volume-slot{width:22px;height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ym-volume-vert{flex:none;width:96px;height:18px;margin:0;transform:rotate(-90deg);accent-color:var(--dsw-alias-bg-accent,#3b6fe0)}
 .ym-volume-value{font-size:10px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
-.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:418px;height:418px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 18px 44px rgba(0,0,0,.6);color:#fff;font-size:13px;overflow:hidden;background:rgba(10,10,13,.72)}
+.ym-lyrics-card{position:fixed;z-index:61;box-sizing:border-box;width:481px;height:481px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.14));box-shadow:0 18px 44px rgba(0,0,0,.6);color:#fff;font-size:13px;overflow:hidden;background:rgba(10,10,13,.72)}
 .ym-lyrics-bg{position:absolute;inset:-10%;background-size:cover;background-position:center;background-repeat:no-repeat;filter:blur(9px) saturate(1.05);opacity:.5;pointer-events:none;transform:scale(1.06)}
 .ym-lyrics-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,8,10,.62) 0%,rgba(8,8,10,.74) 55%,rgba(8,8,10,.87) 100%)}
 .ym-lyrics-card > :not(.ym-lyrics-bg):not(.ym-lyrics-scrim){position:relative;z-index:1}
