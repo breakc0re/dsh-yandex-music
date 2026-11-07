@@ -150,6 +150,8 @@ New-Item -ItemType Junction `
 
 ## Публикация в маркете
 
+Пошаговая инструкция — в [docs/publishing.md](docs/publishing.md).
+
 Каталог плагинов DSH читает индекс
 `https://cdn.jsdelivr.net/gh/realguan/dsh-plugin-market@dist/dsh-index.json`.
 Запись для этого плагина лежит в
